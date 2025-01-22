@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" sizes="24x24" href="/icon.png">
+    <link rel="shortcut icon" sizes="24x24" href="/icon.png" />
+    <script type="text/javascript" src="/assets/vanicom.min.js"></script>
+    <script type="text/javascript" src="/assets/utils.js"></script>
+    <title>Frontend</title>
+    <style>
+      :root {
+          font-family: Helvetica, Arial, sans-serif;
+          font-synthesis: none;
+          text-rendering: optimizeLegibility;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          -webkit-text-size-adjust: 100%;
+      }
+
+      html, body { margin: 0; max-width: 100%; background: #222; color: #e0e0e0;  }
+      body { min-width: 320px; min-height: 100vh; }
+
+      #main-node {
+          margin: 0 auto;
+          overflow-x: hidden;
+          min-height: 100vh; /* remove this to make pages not full-height */
+          max-width: 800px;
+          display: flex;
+          flex-direction: column;
+      }
+
+      pre { white-space: pre-wrap; font-family: Courier, sans-serif; }
+
+      button { background: transparent; color: #298ff5; border: 2px solid; border-radius: 5px; padding: 10px; cursor: pointer; font-size: 105%; }
+      button:hover { color: #fff; }
+
+      @media (max-width: 699px) {
+          body { padding: 30px; }
+      }
+    </style>
+</head>
+<body>
+    <div id="main-node">
+      <h2>Wireguard Control</h2>
+      <div style="display: flex;">
+        <div style="flex-grow: 1;" id="status-tab">
+          <h3>Status: </h3>
+          <pre id="code"></pre>
+        </div>
+        <div style="flex-grow: 1; display: none;" id="config-tab">
+        </div>
+        <div style="margin-left: 40px;">
+          <div style="display: flex; flex-direction: column;">
+            <button onclick="getStatus()">Update</button> &nbsp;
+            <button onclick="getConfig()">Get Config</button> &nbsp;
+            <button onclick="tryReboot()">Restart WG</button> &nbsp;
+          <div>
+        </div>
+      </div>
+    </div>
+</body>
+<script>
+var timerId;
+
+function getStatus() {
+  clearTimeout(timerId);
+
+  var statusTab = document.getElementById('status-tab');
+  var configTab = document.getElementById('config-tab');
+  statusTab.style.display = 'block';
+  configTab.style.display = 'none';
+
+  makeRequest({
+    url: '/api/wireguard/status',
+    type: 'GET',
+    callback: function (response) {
+      var preblock = document.getElementById('code');
+      var res = responseHandler(response);
+      if (!res.success) { // ошибки
+        console.error('getStatus get error: ', res);
+        preblock.innerHTML = res.data;
+      } else {
+        preblock.innerHTML = res.data;
+        timerId = setTimeout(getStatus, 2000);
+      }
+    },
+    // data: JSON.stringify(data_to_send)
+  });
+}
+
+function getConfig() {
+  clearTimeout(timerId);
+
+  var statusTab = document.getElementById('status-tab');
+  var configTab = document.getElementById('config-tab');
+  statusTab.style.display = 'none';
+  configTab.style.display = 'block';
+
+  makeRequest({
+    url: '/api/wireguard/config',
+    type: 'GET',
+    callback: function (response) {
+      var res = responseHandler(response);
+      if (!res.success) { // ошибки
+        configTab.innerHTML = '<pre><code>' + res.data + '</code></pre>';
+      } else {
+        configTab.innerHTML = '';
+        const divElem = document.createElement('div');
+        divElem.className = "text";
+        divElem.innerHTML =
+          '<h3>Interface</h3>' + jsonToHTML(res.data.Interface) + '<br />' +
+          '<h3>Peers</h3>' + jsonToHTML(res.data.Peers) + '<br />';
+        configTab.append(divElem);
+      }
+    },
+    // data: JSON.stringify(data_to_send)
+  });
+}
+
+function tryReboot(){
+  clearTimeout(timerId);
+
+  var statusTab = document.getElementById('status-tab');
+  var configTab = document.getElementById('config-tab');
+  statusTab.style.display = 'block';
+  configTab.style.display = 'none';
+
+  makeRequest({
+    url: '/api/wireguard/reboot',
+    type: 'GET',
+    callback: function (response) {
+      var preblock = document.getElementById('code');
+      var res = responseHandler(response);
+      if (!res.success) { // ошибки
+        console.error('tryReboot get error: ', res);
+        preblock.innerHTML = res.data;
+      } else {
+        preblock.innerHTML = res.data;
+      }
+    },
+    // data: JSON.stringify(data_to_send)
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => { setTimeout(getStatus, 1000); });
+</script>
+</html>
