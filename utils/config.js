@@ -1,7 +1,9 @@
 import fs from 'fs';
 
+// Меняем все переводы строк на одинаковые
 const normalizeLineBreaks = (data) => data.replace(/\r\n/g, '\n');
 
+// Разбиваем конфиг по секциям
 const splitBySections = (content) => {
   const result = { Peers: [] };
   if (typeof(content) !== 'string' || !content.length) { return result; }
@@ -19,6 +21,7 @@ const splitBySections = (content) => {
   return result;
 }
 
+// Парсинг линии конфига
 const parseLine = (line) => {
     const trimmedLine = line.trim();
     if (!trimmedLine.startsWith('#') && !trimmedLine.startsWith(';')) {
@@ -69,3 +72,16 @@ export const parseWGConfig = (filePath) => {
     }
   });
 };
+
+export const getConfFiles = (directoryPath) => {
+    return new Promise((resolve, reject) => {
+        fs.readdir(directoryPath, (err, files) => {
+            if (err) {
+                reject(err);
+            } else {
+                const confFiles = files.filter(file => file.endsWith('.conf'));
+                resolve(confFiles);
+            }
+        });
+    });
+}

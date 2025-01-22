@@ -1,2 +1,2 @@
 export { executeSingleCommand } from './exec.js';
-export { parseWGConfig } from './config.js';
+export { parseWGConfig, getConfFiles } from './config.js';

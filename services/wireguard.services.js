@@ -1,5 +1,5 @@
 import { isExistAndNotNull } from 'vanicom';
-import { executeSingleCommand, parseWGConfig } from '../utils/index.js';
+import { executeSingleCommand, getConfFiles, parseWGConfig } from '../utils/index.js';
 
 export const getWGStatus = async (req, res, next) => {
   try {
@@ -23,14 +23,14 @@ export const rebootWG = async (req, res, next) => {
     let wgStatus = await executeSingleCommand('wg');
     if (wgStatus === '') { // Wireguard не запущен
       console.log('WG is down, try restart');
-      await executeSingleCommand('bash', ['-c', `wg-quick up wg0`]);
+      await executeSingleCommand('bash', ['-c', `wg-quick up wg`]);
     } else {
       console.log('WG look like working, try down');
-      await executeSingleCommand('bash', ['-c', `wg-quick down wg0`]);
+      await executeSingleCommand('bash', ['-c', `wg-quick down wg`]);
       wgStatus = await executeSingleCommand('wg'); // Повторно проверяем статус, должно быть ''
       if (wgStatus === '') {
         console.log('WG is down, try restart');
-        await executeSingleCommand('bash', ['-c', `wg-quick up wg0`]);
+        await executeSingleCommand('bash', ['-c', `wg-quick up wg`]);
       } else {
         return res.status(400).json({ success: false, errors: 'Can`t turn off Wireguard' });
       }
@@ -50,12 +50,24 @@ export const rebootWG = async (req, res, next) => {
 
 export const getConfig = async (req, res, next) => {
   try {
-    const wgConfig = await parseWGConfig('/etc/wireguard/wg0.conf');
+    const wgConfig = await getConfFiles('/etc/wireguard/wg.conf');
 
     res.status(200).json({ success: true, data: wgConfig });
   } catch (e) {
     console.error('getConfig service error: ', e)
     res.status(400).json({ success: false, errors: 'Can`t get Wireguard config' });
+    next(e);
+  }
+}
+
+export const getInterfaces = async (req, res, next) => {
+  try {
+    const confFiles = await parseWGConfig('/etc/wireguard');
+
+    res.status(200).json({ success: true, data: confFiles });
+  } catch (e) {
+    console.error('getInterfaces service error: ', e)
+    res.status(400).json({ success: false, errors: 'Can`t get Wireguard Interfaces' });
     next(e);
   }
 }
