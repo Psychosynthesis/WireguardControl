@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
 
+// Хелпер для выполнения команд в баше
 export const executeSingleCommand = (command, args) => {
   return new Promise((resolve, reject) => {
     // Запускаем команду

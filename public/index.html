@@ -5,40 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" sizes="24x24" href="/icon.png">
     <link rel="shortcut icon" sizes="24x24" href="/icon.png" />
+    <link rel="stylesheet" type="text/css" href="/assets/style.css" />
     <script type="text/javascript" src="/assets/vanicom.min.js"></script>
     <script type="text/javascript" src="/assets/utils.js"></script>
-    <title>Frontend</title>
-    <style>
-      :root {
-          font-family: Helvetica, Arial, sans-serif;
-          font-synthesis: none;
-          text-rendering: optimizeLegibility;
-          -webkit-font-smoothing: antialiased;
-          -moz-osx-font-smoothing: grayscale;
-          -webkit-text-size-adjust: 100%;
-      }
-
-      html, body { margin: 0; max-width: 100%; background: #222; color: #e0e0e0;  }
-      body { min-width: 320px; min-height: 100vh; }
-
-      #main-node {
-          margin: 0 auto;
-          overflow-x: hidden;
-          min-height: 100vh; /* remove this to make pages not full-height */
-          max-width: 800px;
-          display: flex;
-          flex-direction: column;
-      }
-
-      pre { white-space: pre-wrap; font-family: Courier, sans-serif; }
-
-      button { background: transparent; color: #298ff5; border: 2px solid; border-radius: 5px; padding: 10px; cursor: pointer; font-size: 105%; }
-      button:hover { color: #fff; }
-
-      @media (max-width: 699px) {
-          body { padding: 30px; }
-      }
-    </style>
+    <title>Wireguard Control</title>
 </head>
 <body>
     <div id="main-node">
@@ -51,6 +21,11 @@
         <div style="flex-grow: 1; display: none;" id="config-tab">
         </div>
         <div style="margin-left: 40px;">
+          <div style="margin-bottom: 40px;">
+            <fieldset id="ifaces-list" style="margin-bottom: 40px;">
+              <legend>Выбор интерфейса</legend>
+            </fieldset>
+          </div>
           <div style="display: flex; flex-direction: column;">
             <button onclick="getStatus()">Update</button> &nbsp;
             <button onclick="getConfig()">Get Config</button> &nbsp;
@@ -92,13 +67,14 @@ function getStatus() {
 function getConfig() {
   clearTimeout(timerId);
 
+  const currentIface = document.querySelector('#ifaces-list input[type="radio"]:checked')?.value;
   var statusTab = document.getElementById('status-tab');
   var configTab = document.getElementById('config-tab');
   statusTab.style.display = 'none';
   configTab.style.display = 'block';
 
   makeRequest({
-    url: '/api/wireguard/config',
+    url: `/api/wireguard/config?iface=${currentIface}`,
     type: 'GET',
     callback: function (response) {
       var res = responseHandler(response);
@@ -121,13 +97,14 @@ function getConfig() {
 function tryReboot(){
   clearTimeout(timerId);
 
+  const currentIface = document.querySelector('#ifaces-list input[type="radio"]:checked')?.value;
   var statusTab = document.getElementById('status-tab');
   var configTab = document.getElementById('config-tab');
   statusTab.style.display = 'block';
   configTab.style.display = 'none';
 
   makeRequest({
-    url: '/api/wireguard/reboot',
+    url: `/api/wireguard/reboot?iface=${currentIface}`,
     type: 'GET',
     callback: function (response) {
       var preblock = document.getElementById('code');
@@ -143,6 +120,35 @@ function tryReboot(){
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => { setTimeout(getStatus, 1000); });
+document.addEventListener("DOMContentLoaded", () => {
+  makeRequest({
+    url: '/api/wireguard/interfaces',
+    type: 'GET',
+    callback: function (response) {
+      var preblock = document.getElementById('code');
+      var res = responseHandler(response);
+      if (!res.success || !Array.isArray(res.data)) { // ошибки
+        console.error('No interfaces found or other error: ', res);
+        preblock.innerHTML = res.data;
+      } else {
+        const ifacesList = document.getElementById('ifaces-list');
+        res.data.map(radiobtn => {
+          const label = document.createElement('label');
+          const input = document.createElement('input');
+          input.setAttribute('type', 'radio');
+          input.setAttribute('name', 'interfaces');  // имя группы радиокнопок должно быть одинаковым
+          input.setAttribute('checked', radiobtn.checked);
+          input.value = radiobtn.value;
+          label.appendChild(input);
+          label.appendChild(document.createTextNode(radiobtn.value));
+          ifacesList.appendChild(label);
+          ifacesList.appendChild(document.createElement('br')); // добавляем перенос строки после каждого элемента
+        })
+        setTimeout(getStatus, 1000);
+      }
+    },
+    // data: JSON.stringify(data_to_send)
+  });
+});
 </script>
 </html>

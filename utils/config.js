@@ -23,23 +23,23 @@ const splitBySections = (content) => {
 
 // Парсинг линии конфига
 const parseLine = (line) => {
-    const trimmedLine = line.trim();
-    if (!trimmedLine.startsWith('#') && !trimmedLine.startsWith(';')) {
-      const match = trimmedLine.match(/^([^=]+)=(.*)$/);
-      if (match) {
-        const key = match[1].trim();
-        const value = match[2].trim();
-        return { [key]: value }
-      }
+  const trimmedLine = line.trim();
+  if (!trimmedLine.startsWith('#') && !trimmedLine.startsWith(';')) {
+    const match = trimmedLine.match(/^([^=]+)=(.*)$/);
+    if (match) {
+      const key = match[1].trim();
+      const value = match[2].trim();
+      return { [key]: value }
     }
+  }
 };
 
 export const parseWGConfig = (filePath) => {
   return new Promise((resolve, reject) => {
-      if (typeof filePath !== 'string') {
-        reject(new Error('filePath must be a string'));
-        return;
-      }
+    if (typeof filePath !== 'string') {
+      reject(new Error('filePath must be a string'));
+      return;
+    }
 
     try {
       fs.readFile(filePath, 'utf8', (err, data) => {
@@ -74,14 +74,17 @@ export const parseWGConfig = (filePath) => {
 };
 
 export const getConfFiles = (directoryPath) => {
-    return new Promise((resolve, reject) => {
-        fs.readdir(directoryPath, (err, files) => {
-            if (err) {
-                reject(err);
-            } else {
-                const confFiles = files.filter(file => file.endsWith('.conf'));
-                resolve(confFiles);
-            }
+  return new Promise((resolve, reject) => {
+    fs.readdir(directoryPath, (err, files) => {
+      if (err) {
+        reject(err);
+      } else {
+        const confFiles = [];
+        files.map(file => {
+          file.endsWith('.conf') && confFiles.push(file.replace(/\.[^.]*$/, ''));
         });
+        resolve(confFiles);
+      }
     });
+  });
 }

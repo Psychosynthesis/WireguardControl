@@ -1,0 +1,33 @@
+:root {
+    font-family: Helvetica, Arial, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+}
+
+html, body { margin: 0; max-width: 100%; background: #222; color: #e0e0e0;  }
+body { min-width: 320px; min-height: 100vh; }
+
+#main-node {
+    margin: 0 auto;
+    overflow-x: hidden;
+    min-height: 100vh; /* remove this to make pages not full-height */
+    max-width: 800px;
+    display: flex;
+    flex-direction: column;
+}
+
+pre { white-space: pre-wrap; font-family: Courier, sans-serif; }
+
+button { background: transparent; color: #298ff5; border: 2px solid; border-radius: 5px; padding: 10px; cursor: pointer; font-size: 105%; }
+button:hover { color: #fff; }
+
+fieldset {
+  border: 1px solid rgba(120, 130, 140, 0.6); border-radius: 5px;
+}
+
+@media (max-width: 699px) {
+    body { padding: 30px; }
+}

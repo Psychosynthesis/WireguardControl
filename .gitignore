@@ -17,3 +17,6 @@ yarn-error.log
 
 # Content pass!
 .editorconfig
+
+# Dev mode
+server.js

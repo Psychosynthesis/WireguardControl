@@ -12,7 +12,7 @@ export const SERVER_PORT = 8877;
 export const ALLOWED_ORIGIN = [ // Важно! Слэш в конце не нужен!
   'http://localhost:'+SERVER_PORT,
   'http://127.0.0.1:'+SERVER_PORT,
-  'http://10.8.1.1:'+SERVER_PORT
+  'http://10.7.0.1:'+SERVER_PORT
 ];
 
 const app = express();
