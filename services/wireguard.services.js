@@ -1,16 +1,18 @@
+import path from 'path';
 import { isExistAndNotNull } from 'vanicom';
-import { executeSingleCommand, getConfFiles, parseWGConfig, readJSON } from '../utils/index.js';
+import { executeSingleCommand, getConfFiles, parseWGConfig, readJSON, normalizeLineBreaks, parseStatus } from '../utils/index.js';
 
 export const getWGStatus = async (req, res, next) => {
   try {
-    const wgStatus = await executeSingleCommand('wg');
-    if (wgStatus.includes('not found, but')) {
+    const rawStatus = await executeSingleCommand('wg');
+    if (rawStatus.includes('not found, but')) {
       return res.status(200).json({ success: true, data: 'Seems like Wireguard does not installed on server' });
-    } else if (wgStatus === '') {
+    } else if (rawStatus === '') {
       return res.status(200).json({ success: true, data: 'Wireguard is disabled', });
     }
+    const parsedStatus = parseStatus(rawStatus);
 
-    res.status(200).json({ success: true, data: wgStatus });
+    res.status(200).json({ success: true, data: parsedStatus });
   } catch (e) {
     console.error('getWGStatus service error: ', e)
     res.status(520).json({ success: false, errors: 'Can`t get Wireguard status' });
@@ -79,11 +81,12 @@ export const getConfig = async (req, res, next) => {
 
 export const getInterfaces = async (req, res, next) => {
   try {
-    const parsedSettings = readJSON('./config.json');
+    const parsedSettings = readJSON(path.resolve(process.cwd(), './config.json'));
     const confFiles = await getConfFiles('/etc/wireguard');
 
-    if (!Array.isArray(confFiles)) {
-      return res.status(500).json({ success: false, errors: 'Error then get configs: ' + confFiles });
+    if (!Array.isArray(confFiles) || Object.keys(parsedSettings).length == 0) {
+      console.error('getInterfaces error when getting the configs files, or system settings. Parsed settings is: ', parsedSettings)
+      return res.status(500).json({ success: false, errors: 'Error when get configs' });
     } else if (!confFiles.length) {
       return res.status(500).json({ success: false, errors: 'Seems like Wireguard is not configured yet' });
     }

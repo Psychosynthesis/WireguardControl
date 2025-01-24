@@ -15,8 +15,9 @@ yarn-error.log
 .sync.json
 .remote-sync.json
 
-# Content pass!
+# Content pass and other sensitive data!
 .editorconfig
+.data
 
 # Dev mode
 server.js

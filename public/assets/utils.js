@@ -143,3 +143,18 @@ function jsonToHTML (json, level = 0) {
 
     return html;
 }
+
+function renderPeerBlocks (peersData = []) {
+  let html = '<h3>Peers</h3>';
+  peersData.map((peer) => {
+    html += `<div class="peerblock"><h4>${peer.name || ' '} <i>[edit]</i></h4><div class="pubkeyblock">${peer['public key'] || peer.PublicKey}</div>`;
+    html += '<div>';
+    if (peer.PresharedKey) { html += `<b>Preshared Key: </b>${peer.PresharedKey} <br />` };
+    if (peer.endpoint) { html += `<b>Peer IP: </b>${peer['allowed ips']} <br />` };
+    if (peer['allowed ips'] || peer.AllowedIPs) { html += `<b>Allowed IPs: </b>${peer['allowed ips'] || peer.AllowedIPs} <br />` };
+    if (peer['latest handshake']) { html += `<b>Last connect: </b>${peer['latest handshake']} <br />` };
+    if (peer.transfer) {html += `<b>Traffic: </b>${peer.transfer} <br />` };
+    html += '</div></div>';
+  });
+  return html;
+}

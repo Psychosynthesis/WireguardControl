@@ -24,10 +24,24 @@ pre { white-space: pre-wrap; font-family: Courier, sans-serif; }
 button { background: transparent; color: #298ff5; border: 2px solid; border-radius: 5px; padding: 10px; cursor: pointer; font-size: 105%; }
 button:hover { color: #fff; }
 
-fieldset {
-  border: 1px solid rgba(120, 130, 140, 0.6); border-radius: 5px;
-}
+fieldset { border: 1px solid rgba(120, 130, 140, 0.6); border-radius: 5px; }
 
-@media (max-width: 699px) {
+#config-tab, #status-tab { flex-grow: 1; }
+#ifaces-list { margin-bottom: 40px; }
+
+.infoblock { display: flex; }
+.menublock { margin-left: 40px; width: 180px; min-width: 180px; }
+.menublock>div { margin-bottom: 20px; }
+.buttonsblock { display: flex; flex-direction: column; }
+.peerblock { background: rgba(100, 110, 130, 0.2); border-radius: 8px; padding: 10px; margin-bottom: 20px; }
+.peerblock h4 { margin: 0px 0px 5px 0px; }
+.peerblock .pubkeyblock { font-size: 85%; color: #ccc; margin-bottom: 10px; }
+
+@media (max-width: 840px) {
     body { padding: 30px; }
+    #config-tab, #status-tab { order: 2; }
+    #ifaces-list { margin-bottom: 0px; }
+    .infoblock { flex-direction: column; }
+    .menublock { margin-left: 0; width: 100%; }
+    .buttonsblock { display: flex; flex-direction: row; }
 }

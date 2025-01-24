@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" sizes="24x24" href="/icon.png">
-    <link rel="shortcut icon" sizes="24x24" href="/icon.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/assets/icon.png">
+    <link rel="shortcut icon" sizes="96x96" href="/assets/icon.png" />
     <link rel="stylesheet" type="text/css" href="/assets/style.css" />
     <script type="text/javascript" src="/assets/vanicom.min.js"></script>
     <script type="text/javascript" src="/assets/utils.js"></script>
@@ -13,30 +13,23 @@
 <body>
     <div id="main-node">
       <h2>Wireguard Control</h2>
-      <div style="display: flex;">
-        <div style="flex-grow: 1;" id="status-tab">
-          <h3>Status: </h3>
-          <pre id="code"></pre>
-        </div>
-        <div style="flex-grow: 1; display: none;" id="config-tab">
-        </div>
-        <div style="margin-left: 40px;">
-          <div style="margin-bottom: 40px;">
-            <fieldset id="ifaces-list" style="margin-bottom: 40px;">
-              <legend>Выбор интерфейса</legend>
-            </fieldset>
-          </div>
-          <div style="display: flex; flex-direction: column;">
-            <button onclick="getStatus()">Update</button> &nbsp;
-            <button onclick="getConfig()">Get Config</button> &nbsp;
+      <div class="infoblock">
+        <div id="status-tab"><h3>Status</h3><div id="code"></div></div>
+        <div style="display: none;" id="config-tab"></div>
+        <div class="menublock">
+          <div class="buttonsblock">
+            <button onclick="getStatus()">Status</button> &nbsp;
+            <button onclick="getConfig()">Config</button> &nbsp;
             <button onclick="tryReboot()">Restart WG</button> &nbsp;
-          <div>
+          </div>
+          <div><fieldset id="ifaces-list"><legend>Выбор интерфейса</legend></fieldset></div>
         </div>
       </div>
     </div>
 </body>
 <script type="text/javascript">
 var timerId;
+const defaultUpdateInterval = 3000;
 
 function getStatus() {
   clearTimeout(timerId);
@@ -56,8 +49,16 @@ function getStatus() {
         console.error('getStatus get error: ', res);
         preblock.innerHTML = res.data;
       } else {
-        preblock.innerHTML = res.data;
-        timerId = setTimeout(getStatus, 2000);
+        preblock.innerHTML = '';
+        const divElem = document.createElement('div');
+        divElem.className = "text";
+        divElem.innerHTML =
+          `<b>Interface name: </b> ${res.data.interface.name} <br />
+          <b>Public key: </b>${res.data.interface['public key']} <br />
+          <b>Listening port: </b>${res.data.interface['listening port']} <br /><br />
+          ${renderPeerBlocks(res.data.peers)} <br />`;
+        preblock.append(divElem);
+        timerId = setTimeout(getStatus, defaultUpdateInterval);
       }
     },
     // data: JSON.stringify(data_to_send)
@@ -85,8 +86,8 @@ function getConfig() {
         const divElem = document.createElement('div');
         divElem.className = "text";
         divElem.innerHTML =
-          '<h3>Interface</h3>' + jsonToHTML(res.data.Interface) + '<br />' +
-          '<h3>Peers</h3>' + jsonToHTML(res.data.Peers) + '<br />';
+          '<h3>Interface</h3>' + jsonToHTML(res.data.interface) + '<br />' +
+          renderPeerBlocks(res.data.peers);
         configTab.append(divElem);
       }
     },
