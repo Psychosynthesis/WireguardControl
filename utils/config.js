@@ -74,6 +74,7 @@ export const parseWGConfig = (filePath) => {
   });
 };
 
+// Получаем список интерфейсов (все файлы .conf)
 export const getConfFiles = (directoryPath) => {
   return new Promise((resolve, reject) => {
     fs.readdir(directoryPath, (err, files) => {
@@ -88,4 +89,16 @@ export const getConfFiles = (directoryPath) => {
       }
     });
   });
+}
+
+// Дописываем конфиг
+export const appendDataToConfig = async (filePath, data) => {
+  const stringToAppend = '\n' + data + '\n';
+  try {
+    await fs.appendFileSync(filePath, stringToAppend, 'utf-8');
+    console.log(`Строка успешно добавлена в файл "${filePath}"`);
+  } catch (error) {
+    console.error(`Ошибка при добавлении строки в файл "${filePath}":`, error);
+    throw error;
+  }
 }

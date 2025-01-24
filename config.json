@@ -1,3 +1,5 @@
 {
-  "defaultInterface": "wg"
+  "defaultInterface": "wg",
+  "serverPort": 8877,
+  "allowedOrigins": [ "http://localhost:8877", "http://127.0.0.1:8877", "http://10.8.1.1:8877" ]
 }

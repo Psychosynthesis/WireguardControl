@@ -15,12 +15,13 @@
       <h2>Wireguard Control</h2>
       <div class="infoblock">
         <div id="status-tab"><h3>Status</h3><div id="code"></div></div>
-        <div style="display: none;" id="config-tab"></div>
+        <div id="config-tab" style="display: none;"></div>
         <div class="menublock">
           <div class="buttonsblock">
             <button onclick="getStatus()">Status</button> &nbsp;
             <button onclick="getConfig()">Config</button> &nbsp;
             <button onclick="tryReboot()">Restart WG</button> &nbsp;
+            <button onclick="addNewClient()">Add Client</button> &nbsp;
           </div>
           <div><fieldset id="ifaces-list"><legend>Выбор интерфейса</legend></fieldset></div>
         </div>
@@ -30,9 +31,11 @@
 <script type="text/javascript">
 var timerId;
 const defaultUpdateInterval = 3000;
+const currentIface = () => document.querySelector('#ifaces-list input[type="radio"]:checked')?.value;
+
 
 function getStatus() {
-  clearTimeout(timerId);
+  if (timerId) { clearTimeout(timerId); }
 
   var statusTab = document.getElementById('status-tab');
   var configTab = document.getElementById('config-tab');
@@ -66,16 +69,14 @@ function getStatus() {
 }
 
 function getConfig() {
-  clearTimeout(timerId);
-
-  const currentIface = document.querySelector('#ifaces-list input[type="radio"]:checked')?.value;
+  if (timerId) { clearTimeout(timerId); }
   var statusTab = document.getElementById('status-tab');
   var configTab = document.getElementById('config-tab');
   statusTab.style.display = 'none';
   configTab.style.display = 'block';
 
   makeRequest({
-    url: `/api/wireguard/config?iface=${currentIface}`,
+    url: `/api/wireguard/config?iface=${currentIface()}`,
     type: 'GET',
     callback: function (response) {
       var res = responseHandler(response);
@@ -95,8 +96,29 @@ function getConfig() {
   });
 }
 
+function addNewClient(){
+  if (timerId) { clearTimeout(timerId); }
+
+  makeRequest({
+    url: '/api/wireguard/client/add',
+    type: 'POST',
+    callback: function (response) {
+      var preblock = document.getElementById('code');
+      var res = responseHandler(response);
+      if (!res.success) { // ошибки
+        console.error('addNewClient error: ', res);
+        preblock.innerHTML = res.data;
+      } else {
+        alert(`Внимание! Сохраните данные они больше нигде не хранятся! \n PrivateKey: ${res.data.PrivateKey} \n Peer PublicKey: ${res.data.ServerKey} \n Peer PresharedKey: ${res.data.PresharedKey} \n Peer Endpoint: ${res.data.ServerIp}`);
+        timerId = setTimeout(getStatus, defaultUpdateInterval);
+      }
+    },
+    data: JSON.stringify({ name: 'New', ip: '10.8.1.100/24', iface: currentIface() })
+  });
+}
+
 function tryReboot(){
-  clearTimeout(timerId);
+  if (timerId) { clearTimeout(timerId); }
 
   const currentIface = document.querySelector('#ifaces-list input[type="radio"]:checked')?.value;
   var statusTab = document.getElementById('status-tab');

@@ -29,3 +29,17 @@ export const executeSingleCommand = (command, args) => {
     });
   });
 }
+
+// Генерируем публичный ключ из приватного
+export const genPubKey = async (privateKey) => {
+  const pubKey = await executeSingleCommand('bash', ['-c', `echo ${privateKey} | wg pubkey`]);
+  return pubKey;
+}
+
+export const genNewClientKeys = async () => {
+  const randomKey = await executeSingleCommand('wg', ['genkey']);
+  const presharedKey = await executeSingleCommand('wg', ['genkey']);
+  const pubKey = await genPubKey(randomKey);
+
+  return { randomKey, presharedKey, pubKey }
+}

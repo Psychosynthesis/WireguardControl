@@ -1,6 +1,15 @@
 import path from 'path';
 import { isExistAndNotNull } from 'vanicom';
-import { executeSingleCommand, getConfFiles, parseWGConfig, readJSON, normalizeLineBreaks, parseStatus } from '../utils/index.js';
+import {
+  appendDataToConfig,
+  executeSingleCommand,
+  genNewClientKeys,
+  getConfFiles,
+  parseWGConfig,
+  readJSON,
+  normalizeLineBreaks,
+  parseStatus
+} from '../utils/index.js';
 
 export const getWGStatus = async (req, res, next) => {
   try {
@@ -58,7 +67,8 @@ export const rebootWG = async (req, res, next) => {
   }
 }
 
-export const getConfig = async (req, res, next) => {
+// Получить конфиг конкретного интерфейса
+export const getInterfaceConfig = async (req, res, next) => {
   const iface = req.query.iface;
   if (!iface) {
     return res.status(400).json({ success: false, errors: 'Interface must be provided!' });
@@ -69,7 +79,10 @@ export const getConfig = async (req, res, next) => {
     if (!confFiles.includes(iface)) {
       return res.status(422).json({ success: false, errors: 'Incorrect interface!' });
     }
+
+    // Парсим конфиг
     const currentConfig = await parseWGConfig(`/etc/wireguard/${iface}.conf`);
+
 
     res.status(200).json({ success: true, data: currentConfig });
   } catch (e) {
@@ -79,6 +92,7 @@ export const getConfig = async (req, res, next) => {
   }
 }
 
+// Получаем список доступных интерфейсов
 export const getInterfaces = async (req, res, next) => {
   try {
     const parsedSettings = readJSON(path.resolve(process.cwd(), './config.json'));
@@ -103,38 +117,34 @@ export const getInterfaces = async (req, res, next) => {
   }
 }
 
-export const getRandomKey = async (req, res, next) => {
-  try {
-    const randomKey = await executeSingleCommand('wg', ['genkey']);
-    if (!randomKey) {
-      console.log('Something went wrong, cant get randomKey: ', randomKey);
-      return res.status(500).json({ success: false, errors: 'Something went wrong, can`t get random key' });
-    }
+export const addNewClient = async (req, res, next) => {
+  const newIp = req.body?.ip;
+  const newName = req.body?.name;
+  const iface = req.body?.iface;
 
-    res.status(200).json({
-      data: randomKey,
-    });
-  } catch (e) {
-    console.error('getRandomKey service error: ', e)
-    res.status(520).json({ success: false, errors: 'Can`t get random key' });
-    next(e)
+  if (!newIp || !iface) {
+    return res.status(400).json({ success: false, errors: 'AllowedIPs and Interface must be provided' });
   }
-}
 
-export const getPubKey = async (req, res, next) => {
   try {
-    const pubKey = await executeSingleCommand('bash', ['-c', 'echo "kOd3FVBggwpjD3AlZKXUxNTzJT0+f3MJdUdR8n6ZBn8=" | wg pubkey']);
-    if (!pubKey) {
-      console.log('Something went wrong, cant get pubKey: ', pubKey);
-      return res.status(500).json({ success: false, errors: 'Something went wrong, can`t get public key' });
-    }
+    const newClientData = await genNewClientKeys();
+    const serverKey = global.wgControlServerSettings.interfaces[iface].pubkey;
+
+    await appendDataToConfig(
+      path.resolve(process.cwd(), './.data/test.conf'),
+      `[Peer] ${newName ? '#' + newName : ''} \n PublicKey = ${newClientData.pubKey}\n PresharedKey = ${newClientData.presharedKey}\n AllowedIPs = ${newIp}\n`
+    );
 
     res.status(200).json({
-      data: pubKey,
+      data: {
+        PresharedKey: newClientData.presharedKey,
+        PrivateKey: newClientData.randomKey,
+        ServerKey: serverKey
+      },
     });
   } catch (e) {
-    console.error('getPubKey service error: ', e)
-    res.status(520).json({ success: false, errors: 'Can`t get public key' });
-    next(e);
+    console.error('addNewClient service error: ', e)
+    res.status(520).json({ success: false, errors: 'Can`t add new client' });
+    next(e)
   }
 }
