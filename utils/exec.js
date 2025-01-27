@@ -22,7 +22,7 @@ export const executeSingleCommand = (command, args) => {
     // Ожидаем завершения процесса
     childProcess.on('close', (code) => {
       if (code !== 0) {
-        reject(new Error(`Процесс завершился с ошибкой ${code}: ${stderrData}`));
+        reject(new Error(`executeSingleCommand end with error ${code}: ${stderrData}`));
       } else {
         resolve(stdoutData.trim());
       }

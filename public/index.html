@@ -154,6 +154,8 @@ function tryReboot(){
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (!checkPass()) { alert('Пароль не верный'); return; }
+
   // Получаем список доступных интерфейсов прежде чем запрашивать статус
   makeRequest({
     url: '/api/config/interfaces',

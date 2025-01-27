@@ -125,6 +125,14 @@ function errorsHandler(errors) { // Используется для обрабо
 	return errorsInner;
 }
 
+// Очень большой секрет
+const secretPass = '\u0050\u0073\u0073\u0077\u006f\u0072\u0064';
+
+const checkPass = () => {
+  const getPass = prompt('Для управления Wireguard требуется ввести пароль', '');
+  return obfusPa(getPass) === obfusPa(secretPass);
+}
+
 function jsonToHTML (json, level = 0) {
     let html = '';
 
@@ -162,4 +170,14 @@ function renderPeerBlocks (peersData = []) {
     html += '</div></div>';
   });
   return html;
+}
+
+const obfusPa = (str) => str.split('').map((char, i) => "\\u" + (str.charCodeAt(i)).toString(16).padStart(4, '0')).join('');
+const deobfusPa = (str) => {
+  try {
+    return str.replace(/\\u([\dA-F]{4})/gi, (match, p1) => String.fromCharCode(parseInt(p1, 16)));
+  } catch (e) {
+    console.error('Error during decoding', e);
+    return null;
+  }
 }

@@ -91,14 +91,46 @@ export const getConfFiles = (directoryPath) => {
   });
 }
 
-// Дописываем конфиг
+// Дописываем в конец конфига
 export const appendDataToConfig = async (filePath, data) => {
   const stringToAppend = '\n' + data + '\n';
   try {
     await fs.appendFileSync(filePath, stringToAppend, 'utf-8');
-    console.log(`Строка успешно добавлена в файл "${filePath}"`);
   } catch (error) {
-    console.error(`Ошибка при добавлении строки в файл "${filePath}":`, error);
+    console.error(`Error on appendDataToConfig to file: "${filePath}":`, error);
     throw error;
   }
+}
+
+// Вывод объекта в формате секции файла .conf, без проверок
+export const formatObjectToConfigSection = (sectionName, configObject) => {
+  if (!sectionName || !Object.keys(configObject).length) {
+    console.log('Incorrect data for formatObjectToConfigSection: ', sectionName, configObject);
+  }
+
+  let output = `[${sectionName}]\n `;
+  Object.entries(configObject).forEach(([key, value]) => { output += `${key} = ${value}\n `; });
+  output += '\n ';
+  return output;
+}
+
+export const formatConfigToString = (configObject) => {
+  // configObject = { Interface: { ... }, Peers: [] or Peer: { ... } }
+  let output = '';
+  for (let section in configObject) {
+    if (section.toLowerCase() === 'peers') {
+      configObject[section].map((peer) => {
+        if ( // Обязательные свойства у любого пира (и на сервере и на клиенте)
+          !peer.hasOwnProperty('PublicKey') || !peer.hasOwnProperty('PresharedKey') || !peer.hasOwnProperty('AllowedIPs')
+        ) {
+          console.log('Incorrect peer in configObject: ', peer);
+          return;
+        }
+        output += formatObjectToConfigSection('Peer', peer);
+      });
+      continue;
+    }
+    output += formatObjectToConfigSection(section, configObject[section]);
+  }
+  return output;
 }

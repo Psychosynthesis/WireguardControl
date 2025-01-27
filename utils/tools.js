@@ -10,9 +10,9 @@ export const readJSON = (filePath) => {
     return JSON.parse(savedConfig);
   } catch (err) {
     if (err.code === 'ENOENT') {
-      console.log("Ошибка: Файл не найден.");
+      console.log("File not found.");
     } else {
-      console.error("Произошла ошибка:", err);
+      console.error("Function readJSON get error:", err);
     }
 
     return {};
@@ -34,32 +34,4 @@ export const getNameFromSavedData = (key) => {
   }
 
   return '';
-}
-
-export const formatObjectToConfigSection = (sectionName, configObject) => {
-  let output = `[${sectionName}]\n`;
-  Object.entries(configObject).forEach(([key, value]) => { output += `${key} = ${value}\n`; });
-  output += '\n';
-  return output;
-}
-
-export const formatConfigToString = (configObject) => {
-  // configObject = { Interface: { ... }, Peers: [] or Peer: { ... } }
-  let output = '';
-  for (let section in configObject) {
-    if (section.toLowerCase() === 'peers') {
-      configObject[section].map((peer) => {
-        if ( // Обязательные свойства у любого пира (и на сервере и на клиенте)
-          !peer.hasOwnProperty('PublicKey') || !peer.hasOwnProperty('PresharedKey') || !peer.hasOwnProperty('AllowedIPs')
-        ) {
-          console.log('Incorrect peer in configObject: ', peer);
-          return;
-        }
-        output += formatObjectToConfigSection('Peer', peer);
-      });
-      continue;
-    }
-    output += formatObjectToConfigSection(section, configObject[section]);
-  }
-  return output;
 }
