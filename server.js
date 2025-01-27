@@ -5,26 +5,17 @@ import path from 'path';
 import { stringify } from 'flatted';
 
 import { setSecurityHeaders, verifyClient } from './middlewares/index.js';
-import { readJSON } from './utils/index.js';
+import { readJSON, loadServerConfig } from './utils/index.js';
 
 import configRouter from './routes/config.router.js';
 import wireguardRouter from './routes/wireguard.router.js';
 import interfaceRouter from './routes/interface.router.js';
 
 const savedSettings = readJSON(path.resolve(process.cwd(), './config.json'));
-const savedInterfaces = readJSON(path.resolve(process.cwd(), './.data/interfaces.json'));
-const { serverPort, allowedOrigins, defaultInterface } = savedSettings;
+const { serverPort, allowedOrigins } = savedSettings;
 // Важно! Слэш в конце адреса в allowedOrigins не нужен!
 
-// Часть данных храним в глобальном скоупе, чтобы не дёргать диск
-// TODO: Вынести в отдельный модуль
-global.wgControlServerSettings = { configLoaded: false, interfaces: {} };
-for (let iface in savedInterfaces) {
-  global.wgControlServerSettings.interfaces[iface] = { ...savedInterfaces[iface] };
-}
-if (global.wgControlServerSettings.interfaces[defaultInterface].pubkey) { // Проверяем что есть данные по дефолтному интерфейсу
-  global.wgControlServerSettings.configLoaded = true;
-}
+loadServerConfig();
 
 const app = express();
 app.disable('x-powered-by'); // Remove unnecs header

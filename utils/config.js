@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import { getNameFromSavedData, readJSON, normalizeLineBreaks } from './tools.js';
 
 // Разбиваем конфиг по секциям
@@ -133,4 +134,19 @@ export const formatConfigToString = (configObject) => {
     output += formatObjectToConfigSection(section, configObject[section]);
   }
   return output;
+}
+
+export const loadServerConfig = () => {
+  const savedSettings = readJSON(path.resolve(process.cwd(), './config.json'));
+  const savedInterfaces = readJSON(path.resolve(process.cwd(), './.data/interfaces.json'));
+  const { serverPort, allowedOrigins, defaultInterface } = savedSettings;
+
+  global.wgControlServerSettings = { configLoaded: false, interfaces: {} };
+  for (let iface in savedInterfaces) {
+    global.wgControlServerSettings.interfaces[iface] = { ...savedInterfaces[iface] };
+  }
+
+  if (Object.keys(global.wgControlServerSettings.interfaces).length) {
+    global.wgControlServerSettings.configLoaded = true;
+  }
 }
