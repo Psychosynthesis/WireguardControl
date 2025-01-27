@@ -7,6 +7,7 @@ import { stringify } from 'flatted';
 import { setSecurityHeaders, verifyClient } from './middlewares/index.js';
 import { readJSON } from './utils/index.js';
 
+import configRouter from './routes/config.router.js';
 import wireguardRouter from './routes/wireguard.router.js';
 import interfaceRouter from './routes/interface.router.js';
 
@@ -32,6 +33,7 @@ app.use(cookieParser());
 app.use(setSecurityHeaders);
 
 app.use('/', interfaceRouter);
+app.use('/api/config', cors({ origin: allowedOrigins, credentials: true }), verifyClient, configRouter);
 app.use('/api/wireguard', cors({ origin: allowedOrigins, credentials: true }), verifyClient, wireguardRouter);
 
 app.use((err, req, res, next) => {

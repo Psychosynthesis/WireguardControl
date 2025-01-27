@@ -47,7 +47,12 @@ function makeRequest(makeRequestArguments) {
       }
 
 			if (typeof(makeRequestArguments.callback) === 'function') {
-				makeRequestArguments.callback.call(makeRequestArguments.context, httpRequest.responseText);
+        var contentType = httpRequest.getResponseHeader('Content-Type');
+        if (contentType && contentType.includes('application/json')) {
+          makeRequestArguments.callback.call(makeRequestArguments.context, httpRequest.responseText);
+        } else {
+          makeRequestArguments.callback.call(makeRequestArguments.context, httpRequest);
+        }
 			} else {
 				console.log('Request parse success, there is no callback in params. Received data: ', httpRequest);
 			}
@@ -150,7 +155,7 @@ function renderPeerBlocks (peersData = []) {
     html += `<div class="peerblock"><h4>${peer.name || ' '} <i>[edit]</i></h4><div class="pubkeyblock">${peer['public key'] || peer.PublicKey}</div>`;
     html += '<div>';
     if (peer.PresharedKey) { html += `<b>Preshared Key: </b>${peer.PresharedKey} <br />` };
-    if (peer.endpoint) { html += `<b>Peer IP: </b>${peer['allowed ips']} <br />` };
+    if (peer.endpoint) { html += `<b>Peer public IP: </b>${peer.endpoint} <br />` };
     if (peer['allowed ips'] || peer.AllowedIPs) { html += `<b>Allowed IPs: </b>${peer['allowed ips'] || peer.AllowedIPs} <br />` };
     if (peer['latest handshake']) { html += `<b>Last connect: </b>${peer['latest handshake']} <br />` };
     if (peer.transfer) {html += `<b>Traffic: </b>${peer.transfer} <br />` };

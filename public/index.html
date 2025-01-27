@@ -32,7 +32,8 @@
 var timerId;
 const defaultUpdateInterval = 3000;
 const currentIface = () => document.querySelector('#ifaces-list input[type="radio"]:checked')?.value;
-
+const ipRegex = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
+const validateIPWithSubnet = (input) => ipRegex.test(input);
 
 function getStatus() {
   if (timerId) { clearTimeout(timerId); }
@@ -76,7 +77,7 @@ function getConfig() {
   configTab.style.display = 'block';
 
   makeRequest({
-    url: `/api/wireguard/config?iface=${currentIface()}`,
+    url: `/api/config?iface=${currentIface()}`,
     type: 'GET',
     callback: function (response) {
       var res = responseHandler(response);
@@ -98,22 +99,31 @@ function getConfig() {
 
 function addNewClient(){
   if (timerId) { clearTimeout(timerId); }
+  let newName = prompt('Введите имя (подпись) нового клиента', 'Client');
+  let newIPs = prompt('Введите внутренний IP нового клиента', '10.8.1.6');
+  if (!newIPs || newIPs.length === 0) {
+    alert('Необходимо вручную указать адрес для нового клиента, система пока не умеет присваивать адреса автоматически.');
+    return;
+  } else if (!validateIPWithSubnet(newIPs)) {
+    alert('Введён некорректный IP для нового клиента: ' + newIPs);
+    return;
+  }
 
   makeRequest({
-    url: '/api/wireguard/client/add',
+    url: '/api/config/client/add',
     type: 'POST',
     callback: function (response) {
-      var preblock = document.getElementById('code');
-      var res = responseHandler(response);
-      if (!res.success) { // ошибки
-        console.error('addNewClient error: ', res);
-        preblock.innerHTML = res.data;
-      } else {
-        alert(`Внимание! Сохраните данные они больше нигде не хранятся! \n PrivateKey: ${res.data.PrivateKey} \n Peer PublicKey: ${res.data.ServerKey} \n Peer PresharedKey: ${res.data.PresharedKey} \n Peer Endpoint: ${res.data.ServerIp}`);
-        timerId = setTimeout(getStatus, defaultUpdateInterval);
+      if (response.status === 200) {
+        const blob = new Blob([response.responseText]);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = newName ? newName + '.conf' : 'Client.conf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     },
-    data: JSON.stringify({ name: 'New', ip: '10.8.1.100/24', iface: currentIface() })
+    data: JSON.stringify({ name: newName, ip: newIPs, iface: currentIface() })
   });
 }
 
@@ -144,8 +154,9 @@ function tryReboot(){
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Получаем список доступных интерфейсов прежде чем запрашивать статус
   makeRequest({
-    url: '/api/wireguard/interfaces',
+    url: '/api/config/interfaces',
     type: 'GET',
     callback: function (response) {
       var preblock = document.getElementById('code');

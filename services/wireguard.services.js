@@ -1,13 +1,7 @@
 import path from 'path';
-import { isExistAndNotNull } from 'vanicom';
 import {
-  appendDataToConfig,
   executeSingleCommand,
-  genNewClientKeys,
   getConfFiles,
-  parseWGConfig,
-  readJSON,
-  normalizeLineBreaks,
   parseStatus
 } from '../utils/index.js';
 
@@ -63,88 +57,6 @@ export const rebootWG = async (req, res, next) => {
     console.error('rebootWG service error: ', e);
     const errText = (process.env.NODE_ENV === 'production') ? 'Some problem during Wireguard reboot' : 'rebootWG service error: ' + e.message
     res.status(520).json({ success: false, errors: errText });
-    next(e)
-  }
-}
-
-// Получить конфиг конкретного интерфейса
-export const getInterfaceConfig = async (req, res, next) => {
-  const iface = req.query.iface;
-  if (!iface) {
-    return res.status(400).json({ success: false, errors: 'Interface must be provided!' });
-  }
-
-  try {
-    const confFiles = await getConfFiles('/etc/wireguard');
-    if (!confFiles.includes(iface)) {
-      return res.status(422).json({ success: false, errors: 'Incorrect interface!' });
-    }
-
-    // Парсим конфиг
-    const currentConfig = await parseWGConfig(`/etc/wireguard/${iface}.conf`);
-
-
-    res.status(200).json({ success: true, data: currentConfig });
-  } catch (e) {
-    console.error('getConfig service error: ', e)
-    res.status(520).json({ success: false, errors: 'Can`t get Wireguard config' });
-    next(e);
-  }
-}
-
-// Получаем список доступных интерфейсов
-export const getInterfaces = async (req, res, next) => {
-  try {
-    const parsedSettings = readJSON(path.resolve(process.cwd(), './config.json'));
-    const confFiles = await getConfFiles('/etc/wireguard');
-
-    if (!Array.isArray(confFiles) || Object.keys(parsedSettings).length == 0) {
-      console.error('getInterfaces error when getting the configs files, or system settings. Parsed settings is: ', parsedSettings)
-      return res.status(500).json({ success: false, errors: 'Error when get configs' });
-    } else if (!confFiles.length) {
-      return res.status(500).json({ success: false, errors: 'Seems like Wireguard is not configured yet' });
-    }
-    const iFaces = [];
-    confFiles.map(file => {
-      iFaces.push({ checked: confFiles.length === 1 || file === parsedSettings.defaultInterface, value: file });
-    })
-
-    res.status(200).json({ success: true, data: iFaces });
-  } catch (e) {
-    console.error('getInterfaces service error: ', e)
-    res.status(520).json({ success: false, errors: 'Can`t get Wireguard Interfaces' });
-    next(e);
-  }
-}
-
-export const addNewClient = async (req, res, next) => {
-  const newIp = req.body?.ip;
-  const newName = req.body?.name;
-  const iface = req.body?.iface;
-
-  if (!newIp || !iface) {
-    return res.status(400).json({ success: false, errors: 'AllowedIPs and Interface must be provided' });
-  }
-
-  try {
-    const newClientData = await genNewClientKeys();
-    const serverKey = global.wgControlServerSettings.interfaces[iface].pubkey;
-
-    await appendDataToConfig(
-      path.resolve(process.cwd(), './.data/test.conf'),
-      `[Peer] ${newName ? '#' + newName : ''} \n PublicKey = ${newClientData.pubKey}\n PresharedKey = ${newClientData.presharedKey}\n AllowedIPs = ${newIp}\n`
-    );
-
-    res.status(200).json({
-      data: {
-        PresharedKey: newClientData.presharedKey,
-        PrivateKey: newClientData.randomKey,
-        ServerKey: serverKey
-      },
-    });
-  } catch (e) {
-    console.error('addNewClient service error: ', e)
-    res.status(520).json({ success: false, errors: 'Can`t add new client' });
     next(e)
   }
 }
