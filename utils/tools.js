@@ -4,13 +4,22 @@ import path from 'path';
 // Меняем все переводы строк на одинаковые
 export const normalizeLineBreaks = (data) => data.replace(/\r\n/g, '\n');
 
-export const readJSON = (filePath) => {
+export const readJSON = (filePath, createIfNotFound = false) => {
   try {
     const savedConfig = readFileSync(filePath, 'utf8');
     return JSON.parse(savedConfig);
   } catch (err) {
     if (err.code === 'ENOENT') {
-      console.log("File not found.");
+      if (createIfNotFound) {
+        console.log("Try to create: ", filePath);
+        try {
+          writeFileSync(filePath, '{}', 'utf8');
+        } catch (writeErr) {
+          console.error(`Error on create file ${filePath}: `, writeErr);
+        }
+      } else {
+        console.log("File not found: ", filePath);
+      }
     } else {
       console.error("Function readJSON get error:", err);
     }
@@ -25,7 +34,7 @@ export const saveJSON = (filePath, objToSave) => {
 }
 
 export const getNameFromSavedData = (key) => {
-  const savedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'));
+  const savedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
   const hasSavedData = Object.keys(savedPeers).length > 0;
 
   // Подставляем в данные имена из сохранёнок

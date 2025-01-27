@@ -81,7 +81,7 @@ export const addNewClient = async (req, res, next) => {
       formatObjectToConfigSection('Peer', { PublicKey: newClientData.pubKey, PresharedKey: newClientData.presharedKey, AllowedIPs: newIp }),
     );
 
-    let parsedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'));
+    let parsedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
     parsedPeers[newClientData.pubKey] = { name: newName ?? '', PresharedKey: newClientData.presharedKey };
     saveJSON(path.resolve(process.cwd(), './.data/peers.json'), parsedPeers);
 

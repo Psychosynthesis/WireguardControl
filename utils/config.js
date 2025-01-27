@@ -138,7 +138,7 @@ export const formatConfigToString = (configObject) => {
 
 export const loadServerConfig = () => {
   const savedSettings = readJSON(path.resolve(process.cwd(), './config.json'));
-  const savedInterfaces = readJSON(path.resolve(process.cwd(), './.data/interfaces.json'));
+  const savedInterfaces = readJSON(path.resolve(process.cwd(), './.data/interfaces.json'), true);
   const { serverPort, allowedOrigins, defaultInterface } = savedSettings;
 
   global.wgControlServerSettings = { configLoaded: false, interfaces: {} };
