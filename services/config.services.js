@@ -91,12 +91,13 @@ export const addNewClient = async (req, res, next) => {
         PresharedKey: newClientData.presharedKey,
         PublicKey: global.wgControlServerSettings.interfaces[iface].pubkey,
         AllowedIPs: '0.0.0.0/0',
+        Endpoint: `${global.wgControlServerSettings.endpoint}:${global.wgControlServerSettings.serverPort}`,
+        PersistentKeepalive: 25
       }
     });
 
     res.setHeader('Content-Type', 'text/plain;charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${newName ? newName + '.conf' : 'Client.conf'}"`);
-    console.log("Заголовки установлены.");
     res.send(formattedConfig);
     res.end();
 

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getNameFromSavedData, readJSON, normalizeLineBreaks } from './tools.js';
+import { getServerIP } from './exec.js';
 
 // Разбиваем конфиг по секциям
 export const splitBySections = (content) => {
@@ -136,12 +137,19 @@ export const formatConfigToString = (configObject) => {
   return output;
 }
 
-export const loadServerConfig = () => {
+export const loadServerConfig = async () => {
   const savedSettings = readJSON(path.resolve(process.cwd(), './config.json'));
   const savedInterfaces = readJSON(path.resolve(process.cwd(), './.data/interfaces.json'), true);
+  const externalIP = await getServerIP();
   const { serverPort, allowedOrigins, defaultInterface } = savedSettings;
 
-  global.wgControlServerSettings = { configLoaded: false, interfaces: {} };
+  global.wgControlServerSettings = {
+    configLoaded: false,
+    interfaces: {},
+    endpoint: externalIP,
+    serverPort
+  };
+
   for (let iface in savedInterfaces) {
     global.wgControlServerSettings.interfaces[iface] = { ...savedInterfaces[iface] };
   }
