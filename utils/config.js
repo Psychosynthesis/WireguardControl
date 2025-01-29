@@ -1,7 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { getNameFromSavedData, readJSON, normalizeLineBreaks } from './tools.js';
-import { getServerIP } from './exec.js';
+import { isExistAndNotNull } from 'vanicom';
+
+import { getStatusFromBash, getNameFromSavedData, normalizeLineBreaks, readJSON, saveJSON } from './tools.js';
+import { genPubKey, getServerIP } from './exec.js';
 
 // Разбиваем конфиг по секциям
 export const splitBySections = (content) => {
@@ -76,23 +78,6 @@ export const parseWGConfig = (filePath) => {
   });
 };
 
-// Получаем список интерфейсов (все файлы .conf)
-export const getConfFiles = (directoryPath) => {
-  return new Promise((resolve, reject) => {
-    fs.readdir(directoryPath, (err, files) => {
-      if (err) {
-        reject(err);
-      } else {
-        const confFiles = [];
-        files.map(file => {
-          file.endsWith('.conf') && confFiles.push(file.replace(/\.[^.]*$/, ''));
-        });
-        resolve(confFiles);
-      }
-    });
-  });
-}
-
 // Дописываем в конец конфига
 export const appendDataToConfig = async (filePath, data) => {
   const stringToAppend = '\n' + data + '\n';
@@ -137,24 +122,90 @@ export const formatConfigToString = (configObject) => {
   return output;
 }
 
-export const loadServerConfig = async () => {
-  const savedSettings = readJSON(path.resolve(process.cwd(), './config.json'));
-  const savedInterfaces = readJSON(path.resolve(process.cwd(), './.data/interfaces.json'), true);
-  const externalIP = await getServerIP();
-  const { serverPort, allowedOrigins, defaultInterface } = savedSettings;
 
-  global.wgControlServerSettings = {
-    configLoaded: false,
-    interfaces: {},
+// Получаем список интерфейсов (все файлы .conf)
+export const getAllConfigs = async () => {
+  const allConfFiles = await new Promise((resolve, reject) => {
+    fs.readdir('/etc/wireguard', (err, files) => {
+      if (err) {
+        reject(err);
+      } else {
+        const confFiles = [];
+        files.map(file => {
+          file.endsWith('.conf') && confFiles.push(file.replace(/\.[^.]*$/, ''));
+        });
+        resolve(confFiles);
+      }
+    });
+  });
+
+  if (!Array.isArray(allConfFiles)) {
+    console.error('getAllConfigs error when getting the configs files: ', allConfFiles)
+    return { success: false, errors: 'Error when get configs' };
+  } else if (!allConfFiles.length) {
+    return { success: false, errors: 'Seems like Wireguard is not configured yet (no .conf files in /etc/wireguard)' };
+  }
+
+  return { success: true, data: allConfFiles };
+}
+
+export const loadServerConfig = async () => {
+  let serverSettings = readJSON(path.resolve(process.cwd(), './config.json'));
+  const savedInterfaces = readJSON(path.resolve(process.cwd(), './.data/interfaces.json'), true);
+  const interfacesCount = Object.keys(savedInterfaces).length;
+  const allConfiguredInterfaces = await getAllConfigs();
+  const externalIP = await getServerIP();
+  const status = await getStatusFromBash();
+  const { allowedOrigins, defaultInterface } = serverSettings;
+
+  let configInMemory = {
+    wgIsWorking: status.success,
+    configIsOk: true,
     endpoint: externalIP,
-    serverPort
+    defaultInterface: '',
+    interfaces: {},
   };
 
-  for (let iface in savedInterfaces) {
-    global.wgControlServerSettings.interfaces[iface] = { ...savedInterfaces[iface] };
+  if (allConfiguredInterfaces.success) {
+    for (let i=0; i < allConfiguredInterfaces.data.length; i++) {
+      const confFile = allConfiguredInterfaces.data[i];
+      try {
+        const { interface: currentInterface } = await parseWGConfig(`/etc/wireguard/${confFile}.conf`);
+        const pubkey = await genPubKey(currentInterface.PrivateKey);
+
+        // Здесь сохраняем в память все параметры интерфейсов к которым хотим иметь доступ
+        // В .data/interfaces.json они хранятся в этом же формате
+        configInMemory.interfaces[confFile] = { pubkey, port: currentInterface.ListenPort }
+
+        if (isExistAndNotNull(defaultInterface) && (confFile === defaultInterface)) {
+          configInMemory.defaultInterface = confFile;
+        }
+      } catch (err) {
+        console.error(`loadServerConfig fail on parse .conf file ${confFile}.conf: `, err)
+      }
+    }
   }
 
-  if (Object.keys(global.wgControlServerSettings.interfaces).length) {
-    global.wgControlServerSettings.configLoaded = true;
+  const correctParsedIfaces = Object.keys(configInMemory.interfaces);
+
+  if (interfacesCount === 0 && !status.success) {
+    configInMemory.configIsOk = false;
+    console.error('No saved settings are found and WG is off.');
   }
+
+  if (!correctParsedIfaces.length) {
+    configInMemory.configIsOk = false;
+    console.error('No .conf files correct parsed from /etc/wireguard');
+  } else if ( // Есть корректные конфиги, но дефолтный интерфейс не корректен
+    !isExistAndNotNull(defaultInterface) || !correctParsedIfaces.includes(defaultInterface)
+  ) {
+    const newDefaultInt = configInMemory.interfaces[correctParsedIfaces[0]];
+    serverSettings.defaultInterface = newDefaultInt;
+    saveJSON(path.resolve(process.cwd(), './config.json'), serverSettings);
+    console.log('defaultInterface from ./config.json missing or incorrect, set new: ', newDefaultInt);
+  }
+
+  console.log('Config loaded in memory: ', configInMemory);
+
+  global.wgControlServerSettings = { ...configInMemory }
 }

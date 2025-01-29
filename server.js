@@ -12,10 +12,10 @@ import wireguardRouter from './routes/wireguard.router.js';
 import interfaceRouter from './routes/interface.router.js';
 
 const savedSettings = readJSON(path.resolve(process.cwd(), './config.json'));
-const { serverPort, allowedOrigins } = savedSettings;
+const { webServerPort, allowedOrigins } = savedSettings;
 // Важно! Слэш в конце адреса в allowedOrigins не нужен!
 
-loadServerConfig();
+await loadServerConfig();
 
 const app = express();
 app.disable('x-powered-by'); // Remove unnecs header
@@ -37,6 +37,6 @@ app.use((err, req, res, next) => {
   }
 })
 
-app.listen(serverPort, () => {
-  console.log(`Wireguard-control ready on http://localhost:${serverPort}`)
+app.listen(webServerPort, () => {
+  console.log(`Wireguard-control ready on http://localhost:${webServerPort}`)
 })

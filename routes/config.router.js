@@ -7,7 +7,9 @@ const router = Router({ mergeParams: true });
 
 const jsonParser = json({ limit: "10mb" });
 
-router.get('/', getInterfaceConfig); // Получить конфиг конкретного интерфейса (config?iface=wg)
+// Получить конфиг конкретного интерфейса (config?iface=wg)
+router.get('/', getInterfaceConfig);
+// Проверяются только загруженные в память конфиги! Для проверки сохранённых написать отдельный метод.
 router.get('/interfaces', getInterfaces);
 router.post('/client/add', jsonParser, addNewClient);
 

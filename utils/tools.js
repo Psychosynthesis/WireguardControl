@@ -1,6 +1,9 @@
 import { readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 
+import { parseStatus } from './parsers.js';
+import { executeSingleCommand } from './exec.js';
+
 // Меняем все переводы строк на одинаковые
 export const normalizeLineBreaks = (data) => data.replace(/\r\n/g, '\n');
 
@@ -43,4 +46,18 @@ export const getNameFromSavedData = (key) => {
   }
 
   return '';
+}
+
+export const getStatusFromBash = async () => {
+  const rawStatus = await executeSingleCommand('wg');
+  if (rawStatus.includes('not found, but')) {
+    return { success: false, errors: 'Seems like Wireguard does not installed on server' };
+  } else if (rawStatus === '') {
+    return { success: false, errors: 'Wireguard is disabled', };
+  }
+  const parsedStatus = parseStatus(rawStatus);
+  return {
+    success: true,
+    data: { ...parsedStatus }
+  }
 }

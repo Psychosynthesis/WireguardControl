@@ -36,17 +36,18 @@ export const genPubKey = async (privateKey) => {
   return pubKey;
 }
 
+// Генерируем новую тройку ключей для клиента или сервера
+export const genNewClientKeys = async () => {
+  const randomKey = await executeSingleCommand('wg', ['genkey']); // Приватный ключ
+  const presharedKey = await executeSingleCommand('wg', ['genkey']); // Общий дополнительный ключ
+  const pubKey = await genPubKey(randomKey); // Публичный ключ
+
+  return { randomKey, presharedKey, pubKey }
+}
+
 export const getServerIP = async () => {
   const externalInterface = await executeSingleCommand('bash', ['-c', `ip route | awk '/default/ {print $5; exit}'`]);
   const command = `ip addr show ${externalInterface} | grep "inet" | grep -v "inet6" | head -n 1 | awk '/inet/ {print $2}' | awk -F/ '{print $1}'`;
   const pubIP = await executeSingleCommand('bash', ['-c', command]);
   return pubIP;
-}
-
-export const genNewClientKeys = async () => {
-  const randomKey = await executeSingleCommand('wg', ['genkey']);
-  const presharedKey = await executeSingleCommand('wg', ['genkey']);
-  const pubKey = await genPubKey(randomKey);
-
-  return { randomKey, presharedKey, pubKey }
 }
