@@ -4,6 +4,7 @@ import { Readable } from 'stream';
 
 import {
   appendDataToConfig,
+  getAllInterfacePeersIPs,
   genNewClientKeys,
   parseWGConfig,
   readJSON,
@@ -25,6 +26,8 @@ export const getInterfaceConfig = async (req, res, next) => {
   try {
     // Парсим конфиг
     const currentConfig = await parseWGConfig(`/etc/wireguard/${iface}.conf`);
+
+    console.log("Busy IP's list: ", getAllInterfacePeersIPs(iface))
 
     res.status(200).json({ success: true, data: currentConfig });
   } catch (e) {
@@ -76,7 +79,11 @@ export const addNewClient = async (req, res, next) => {
     );
 
     let parsedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
-    parsedPeers[newClientData.pubKey] = { name: newName ?? '', PresharedKey: newClientData.presharedKey };
+    parsedPeers[newClientData.pubKey] = { // Сохраняем клиента в наших данных
+      active: true,
+      name: newName ?? '',
+      PresharedKey: newClientData.presharedKey
+    };
     saveJSON(path.resolve(process.cwd(), './.data/peers.json'), parsedPeers);
 
     const formattedConfig = formatConfigToString({

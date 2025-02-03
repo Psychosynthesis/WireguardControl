@@ -3,7 +3,7 @@ import path from 'path';
 import { isExistAndNotNull } from 'vanicom';
 
 import { getStatusFromBash, getNameFromSavedData, normalizeLineBreaks, readJSON, saveJSON } from './tools.js';
-import { genPubKey, getServerIP } from './exec.js';
+import { COLORS, genPubKey, getServerIP } from './exec.js';
 
 // Разбиваем конфиг по секциям
 export const splitBySections = (content) => {
@@ -151,12 +151,15 @@ export const getAllConfigs = async () => {
 
 export const loadServerConfig = async () => {
   let serverSettings = readJSON(path.resolve(process.cwd(), './config.json'));
+  let savedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
   const savedInterfaces = readJSON(path.resolve(process.cwd(), './.data/interfaces.json'), true);
+
   const interfacesCount = Object.keys(savedInterfaces).length;
   const allConfiguredInterfaces = await getAllConfigs();
   const externalIP = await getServerIP();
   const status = await getStatusFromBash();
   const { allowedOrigins, defaultInterface } = serverSettings;
+  let allActivePeers = []; // Для проверки все ли сохранённые клиенты есть в конфигах
 
   let configInMemory = {
     wgIsWorking: status.success,
@@ -169,14 +172,33 @@ export const loadServerConfig = async () => {
   if (allConfiguredInterfaces.success) {
     for (let i=0; i < allConfiguredInterfaces.data.length; i++) {
       const confFile = allConfiguredInterfaces.data[i];
-      try {
-        const { interface: currentInterface } = await parseWGConfig(`/etc/wireguard/${confFile}.conf`);
+      try { // Обрабатываем конфиг интерфейса
+        const { interface: currentInterface, peers } = await parseWGConfig(`/etc/wireguard/${confFile}.conf`);
         const pubkey = await genPubKey(currentInterface.PrivateKey);
+
+        const interfacePeers = []; // Все активные клиенты интерфейса
+
+        // Актуализируем данные по сохранённым пирам из конфига интерфейса на случай
+        // если конфиг менялся при перезагрузке WireguardControl
+        peers.map(peer => {
+          interfacePeers.push(peer.PublicKey);
+          savedPeers = {
+            ...savedPeers,
+            [peer.PublicKey]: {
+              name: isExistAndNotNull(savedPeers[peer.PublicKey].name) ? savedPeers[peer.PublicKey].name : '',
+              active: true,
+              ip: peer.AllowedIPs,
+              PresharedKey: peer.presharedKey
+            }
+          }
+        });
 
         // Здесь сохраняем в память все параметры интерфейсов к которым хотим иметь доступ
         // В .data/interfaces.json они хранятся в этом же формате
-        configInMemory.interfaces[confFile] = { pubkey, port: currentInterface.ListenPort }
+        configInMemory.interfaces[confFile] = { pubkey, port: currentInterface.ListenPort, peers: interfacePeers }
+        allActivePeers = [...allActivePeers, ...interfacePeers] // Добавляем в список активных пиры интерфейса из конфига
 
+        // Указываем дефолтный интерфейс
         if (isExistAndNotNull(defaultInterface) && (confFile === defaultInterface)) {
           configInMemory.defaultInterface = confFile;
         }
@@ -184,6 +206,13 @@ export const loadServerConfig = async () => {
         console.error(`loadServerConfig fail on parse .conf file ${confFile}.conf: `, err)
       }
     }
+
+    // Перебираем все сохранённые пиры
+    Object.keys(savedPeers).map(peerKey => {
+      if (!allActivePeers.includes(peerKey)) savedPeers[peerKey].active = false;
+    })
+
+    saveJSON(path.resolve(process.cwd(), './.data/peers.json'), savedPeers); // Сохраняем данные о пирах
   }
 
   const correctParsedIfaces = Object.keys(configInMemory.interfaces);
@@ -205,7 +234,9 @@ export const loadServerConfig = async () => {
     console.log('defaultInterface from ./config.json missing or incorrect, set new: ', newDefaultInt);
   }
 
-  console.log('Config loaded in memory: ', configInMemory);
+  console.log(COLORS.Reset, ' ');
+  console.log(COLORS.Cyan, 'Config loaded in memory: ', configInMemory);
+  console.log(COLORS.Reset, ' ');
 
   global.wgControlServerSettings = { ...configInMemory }
 }
