@@ -14,7 +14,8 @@
     <div id="main-node">
       <h2>Wireguard Control</h2>
       <div class="infoblock">
-        <div id="status-tab"><h3>Status</h3><div id="code"></div></div>
+        <div id="error-block"><pre id="errors-code"></pre></div>
+        <div id="status-tab"><h3>Status</h3><div id="status-block"></div></div>
         <div id="config-tab" style="display: none;"></div>
         <div class="menublock">
           <div class="buttonsblock">
@@ -29,15 +30,26 @@
     </div>
 </body>
 <script type="text/javascript">
-var timerId;
-const defaultUpdateInterval = 3000;
 const currentIface = () => document.querySelector('#ifaces-list input[type="radio"]:checked')?.value;
-const ipRegex = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
-const validateIPWithSubnet = (input) => ipRegex.test(input);
+
+function getFreeIP() {
+  makeRequest({
+    url: `/api/config/freeIP?iface=${currentIface()}`,
+    type: 'GET',
+    callback: function (getFreeIPResp) {
+      var res = responseHandler(getFreeIPResp);
+      if (!res.success) {
+        console.error('Error on get free IP: ', res.data)
+        renderError(res.data);
+      } else {
+        freeIP = res.data
+      }
+    }
+  });
+}
 
 function getStatus() {
-  if (timerId) { clearTimeout(timerId); }
-
+  clearErrorAndTimeout();
   var statusTab = document.getElementById('status-tab');
   var configTab = document.getElementById('config-tab');
   statusTab.style.display = 'block';
@@ -47,13 +59,11 @@ function getStatus() {
     url: '/api/wireguard/status',
     type: 'GET',
     callback: function (response) {
-      var preblock = document.getElementById('code');
       var res = responseHandler(response);
-      if (!res.success) { // ошибки
-        console.error('getStatus get error: ', res);
-        preblock.innerHTML = res.data;
-      } else {
-        preblock.innerHTML = '';
+      if (!res.success) { renderError(res.data); }
+      else {
+        var statusBlock = document.getElementById('status-block');
+        statusBlock.innerHTML = '';
         const divElem = document.createElement('div');
         divElem.className = "text";
         divElem.innerHTML =
@@ -61,7 +71,8 @@ function getStatus() {
           <b>Public key: </b>${res.data.interface['public key']} <br />
           <b>Listening port: </b>${res.data.interface['listening port']} <br /><br />
           ${renderPeerBlocks(res.data.peers)} <br />`;
-        preblock.append(divElem);
+        statusBlock.append(divElem);
+
         timerId = setTimeout(getStatus, defaultUpdateInterval);
       }
     },
@@ -70,7 +81,8 @@ function getStatus() {
 }
 
 function getConfig() {
-  if (timerId) { clearTimeout(timerId); }
+  clearErrorAndTimeout();
+
   var statusTab = document.getElementById('status-tab');
   var configTab = document.getElementById('config-tab');
   statusTab.style.display = 'none';
@@ -81,14 +93,13 @@ function getConfig() {
     type: 'GET',
     callback: function (response) {
       var res = responseHandler(response);
-      if (!res.success) { // ошибки
-        configTab.innerHTML = '<pre><code>' + res.data + '</code></pre>';
-      } else {
+      if (!res.success) { renderError(res.data); }
+      else {
         configTab.innerHTML = '';
         const divElem = document.createElement('div');
         divElem.className = "text";
         divElem.innerHTML =
-          '<h3>Interface</h3>' + jsonToHTML(res.data.interface) + '<br />' +
+          '<h3>Interface</h3>' + objectToHTML(res.data.interface) + '<br />' +
           renderPeerBlocks(res.data.peers);
         configTab.append(divElem);
       }
@@ -98,13 +109,11 @@ function getConfig() {
 }
 
 function addNewClient(){
-  if (timerId) { clearTimeout(timerId); }
+  clearErrorAndTimeout();
+
   let newName = prompt('Введите имя (подпись) нового клиента', 'Client');
-  let newIPs = prompt('Введите внутренний IP нового клиента', '10.8.1.6');
-  if (!newIPs || newIPs.length === 0) {
-    alert('Необходимо вручную указать адрес для нового клиента, система пока не умеет присваивать адреса автоматически.');
-    return;
-  } else if (!validateIPWithSubnet(newIPs)) {
+  let newIPs = prompt('Введите желаемый внутренний IP нового клиента, либо удалите для автоматического назначения', freeIP);
+  if (newIPs.length > 0 && !validateIPWithSubnet(newIPs)) {
     alert('Введён некорректный IP для нового клиента: ' + newIPs);
     return;
   }
@@ -121,6 +130,13 @@ function addNewClient(){
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        getFreeIP(); // Получаем новый дефолтный IP для следующего клиента для подстановки
+      } else {
+        var res = responseHandler(response);
+        if (!res.success) {
+          renderError(res.data);
+        }
       }
     },
     data: JSON.stringify({ name: newName, ip: newIPs, iface: currentIface() })
@@ -128,24 +144,21 @@ function addNewClient(){
 }
 
 function tryReboot(){
-  if (timerId) { clearTimeout(timerId); }
+  clearErrorAndTimeout();
 
-  const currentIface = document.querySelector('#ifaces-list input[type="radio"]:checked')?.value;
   var statusTab = document.getElementById('status-tab');
   var configTab = document.getElementById('config-tab');
   statusTab.style.display = 'block';
   configTab.style.display = 'none';
 
   makeRequest({
-    url: `/api/wireguard/reboot?iface=${currentIface}`,
+    url: `/api/wireguard/reboot?iface=${currentIface()}`,
     type: 'GET',
     callback: function (response) {
-      var preblock = document.getElementById('code');
+      var preblock = document.getElementById('status-block');
       var res = responseHandler(response);
-      if (!res.success) { // ошибки
-        console.error('tryReboot get error: ', res);
-        preblock.innerHTML = res.data;
-      } else {
+      if (!res.success) { renderError(res.data); }
+      else {
         preblock.innerHTML = res.data;
       }
     },
@@ -161,29 +174,14 @@ document.addEventListener("DOMContentLoaded", () => {
     url: '/api/config/interfaces',
     type: 'GET',
     callback: function (response) {
-      var preblock = document.getElementById('code');
       var res = responseHandler(response);
-      if (!res.success || !Array.isArray(res.data)) { // ошибки
-        console.error('No interfaces found or other error: ', res);
-        preblock.innerHTML = res.data;
-      } else {
-        const ifacesList = document.getElementById('ifaces-list');
-        res.data.map(radiobtn => {
-          const label = document.createElement('label');
-          const input = document.createElement('input');
-          input.setAttribute('type', 'radio');
-          input.setAttribute('name', 'interfaces');  // имя группы радиокнопок должно быть одинаковым
-          input.setAttribute('checked', radiobtn.checked);
-          input.value = radiobtn.value;
-          label.appendChild(input);
-          label.appendChild(document.createTextNode(radiobtn.value));
-          ifacesList.appendChild(label);
-          ifacesList.appendChild(document.createElement('br')); // добавляем перенос строки после каждого элемента
-        })
+      if (!res.success || !Array.isArray(res.data)) { renderError(res.data); }
+      else {
+        renderInterfaceList(res.data, document.getElementById('ifaces-list'));
+        getFreeIP();
         setTimeout(getStatus, 1000);
       }
     },
-    // data: JSON.stringify(data_to_send)
   });
 });
 </script>

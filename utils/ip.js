@@ -1,7 +1,7 @@
-import fs from 'fs';
 import path from 'path';
 import { isExistAndNotNull } from 'vanicom';
-import { readJSON } from './tools.js';
+
+import { getIfaceParams, readJSON } from './index.js';
 
 export const isValidSubnetMask = (mask) => {
   const regex = /^((255|254|252|248|240|224|192|128|0)\.){3}(255|254|252|248|240|224|192|128|0)$/;
@@ -24,16 +24,15 @@ export const isValidSubnetMask = (mask) => {
   return true;
 }
 
-export const getAllInterfacePeersIPs = (iface) => {
-  const activeInterfacesList = Object.keys(global.wgControlServerSettings.interfaces);
-  if (!iface || !activeInterfacesList.includes(iface)) {
-    console.error('Incorrect interface for getAllInterfacePeersIPs: ', iface);
-    return [];
-  }
+export const getInterfacePeersIPs = (iface) => {
+  const ifaceParams = getIfaceParams(iface);
+  if (!ifaceParams.success) { return res.status(400).json(ifaceParams); }
+  const { peers: peersData, ip: serverIP }  = ifaceParams.data;
 
   let parsedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
   let allBusyIPs = [];
-  global.wgControlServerSettings.interfaces[iface].peers.map(peerKey => {
+
+  peersData.map(peerKey => {
     if (isExistAndNotNull(parsedPeers[peerKey])) {
       const ipsList = parsedPeers[peerKey].ip.split(','); // В конфиге IPшники могут храниться в формате списка:  '10.8.1.2/32, 0.0.0.0/0',
       let checkedIP = [];
@@ -54,5 +53,35 @@ export const getAllInterfacePeersIPs = (iface) => {
     }
   })
 
+  allBusyIPs.push(serverIP); // Собственный IP сервера тоже занят
+
   return allBusyIPs.filter(busyIP => busyIP !== '0.0.0.0'); // Удаляем пиры для которых разрешены любые IP
+}
+
+
+export const  getFirstAvailableIP = (occupiedIPs, cidr) => {
+    // Преобразуем занятые IP-адреса в числовой формат
+    const occupied = occupiedIPs.map(ip => {
+        const parts = ip.split('.').map(Number);
+        return (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3];
+    }).sort((a, b) => a - b);
+
+    // Определяем диапазон IP-адресов в подсети
+    const networkIP = occupied[0] & (~0 << (32 - cidr)); // Первый IP в подсети
+    const broadcastIP = networkIP | (~0 >>> cidr); // Последний IP в подсети
+
+    // Ищем первый свободный IP
+    for (let i = networkIP + 1; i < broadcastIP; i++) {
+        if (!occupied.includes(i)) {
+            // Преобразуем числовой IP обратно в строку
+            return [
+                (i >>> 24) & 0xFF,
+                (i >>> 16) & 0xFF,
+                (i >>> 8) & 0xFF,
+                i & 0xFF
+            ].join('.');
+        }
+    }
+
+    return null; // Если свободных IP нет
 }

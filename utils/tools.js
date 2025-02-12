@@ -1,8 +1,7 @@
 import { readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 
-import { parseStatus } from './parsers.js';
-import { executeSingleCommand } from './exec.js';
+import { executeSingleCommand, parseStatus } from './index.js';
 
 // Меняем все переводы строк на одинаковые
 export const normalizeLineBreaks = (data) => data.replace(/\r\n/g, '\n');

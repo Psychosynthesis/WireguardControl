@@ -9,7 +9,7 @@ import { readJSON, loadServerConfig } from './utils/index.js';
 
 import configRouter from './routes/config.router.js';
 import wireguardRouter from './routes/wireguard.router.js';
-import interfaceRouter from './routes/interface.router.js';
+import frontendRouter from './routes/frontend.router.js';
 
 const savedSettings = readJSON(path.resolve(process.cwd(), './config.json'));
 const { webServerPort, allowedOrigins } = savedSettings;
@@ -23,7 +23,7 @@ app.disable('x-powered-by'); // Remove unnecs header
 app.use(cookieParser());
 app.use(setSecurityHeaders);
 
-app.use('/', interfaceRouter);
+app.use('/', frontendRouter);
 app.use('/api/config', cors({ origin: allowedOrigins, credentials: true }), verifyClient, configRouter);
 app.use('/api/wireguard', cors({ origin: allowedOrigins, credentials: true }), verifyClient, wireguardRouter);
 

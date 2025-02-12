@@ -3,6 +3,7 @@ import {
   executeSingleCommand,
   getStatusFromBash,
   getAllConfigs,
+  setWGStatus,
 } from '../utils/index.js';
 
 export const getWGStatus = async (req, res, next) => {
@@ -18,31 +19,30 @@ export const getWGStatus = async (req, res, next) => {
 
 export const rebootWG = async (req, res, next) => {
   const iface = req.query.iface;
-  const activeInterfacesList = Object.keys(global.wgControlServerSettings.interfaces);
-  if (!iface || !activeInterfacesList.includes(iface)) {
+  if (!checkInterface(iface)) {
     return res.status(422).json({ success: false, errors: 'Incorrect interface!' });
   }
 
   try {
     let wgStatus = await executeSingleCommand('wg');
     if (wgStatus === '') { // Wireguard не запущен
-      global.wgControlServerSettings.wgIsWorking = false;
+      setWGStatus(false);
       console.log('WG is down, try restart');
       await executeSingleCommand('bash', ['-c', `wg-quick up ${iface}`]);
     } else {
-      global.wgControlServerSettings.wgIsWorking = true;
+      setWGStatus(true)
       console.log('WG look like working, try down');
       await executeSingleCommand('bash', ['-c', `wg-quick down ${iface}`]);
       wgStatus = await executeSingleCommand('wg'); // Повторно проверяем статус, должно быть ''
       if (wgStatus === '') {
-        global.wgControlServerSettings.wgIsWorking = false;
+        setWGStatus(false)
         console.log('WG is down, try restart');
         await executeSingleCommand('bash', ['-c', `wg-quick up ${iface}`]);
       } else {
         return res.status(500).json({ success: false, errors: 'Can`t turn off Wireguard' });
       }
     }
-    global.wgControlServerSettings.wgIsWorking = true;
+    setWGStatus(true)
     console.log('WG look like successful restarted');
     res.status(200).json({
       data: 'WG Restarted',

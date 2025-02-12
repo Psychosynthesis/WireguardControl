@@ -1,3 +1,26 @@
+var timerId;
+var freeIP = '';
+const defaultUpdateInterval = 3000;
+const ipRegex = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
+const validateIPWithSubnet = (input) => ipRegex.test(input);
+
+// Очень большой секрет
+const secretPass = '\u0050\u0073\u0073\u0077\u006f\u0072\u0064';
+
+const checkPass = () => {
+  const getPass = prompt('Для управления Wireguard требуется ввести пароль', '');
+  return obfusPa(getPass) === obfusPa(secretPass);
+}
+const obfusPa = (str) => str.split('').map((char, i) => "\\u" + (str.charCodeAt(i)).toString(16).padStart(4, '0')).join('');
+const deobfusPa = (str) => {
+  try {
+    return str.replace(/\\u([\dA-F]{4})/gi, (match, p1) => String.fromCharCode(parseInt(p1, 16)));
+  } catch (e) {
+    console.error('Error during decoding', e);
+    return null;
+  }
+}
+
 function makeRequest(makeRequestArguments) {
   var requestContentType = (typeof(makeRequestArguments.contentType) !== 'undefined') ? makeRequestArguments.contentType : 'application/json';
   var httpRequest = null;
@@ -93,47 +116,7 @@ function responseHandler(response) {
   return result;
 }
 
-function errorsHandler(errors) { // Используется для обработки ошибок приходящих на post-запросы
-	var errorsInner = document.createElement('div');
-	if (!errors) {
-		console.error('В errorsHandler передана пустая ошибка.');
-		errorsInner.innerText = 'Неизвестная ошибка';
-		return errorsInner;
-	}
-	if (Array.isArray(errors)) {
-		forEach(errors, function(oneErr){
-			var newError = document.createElement('div');
-			newError.innerText = oneErr;
-			errorsInner.appendChild(newError);
-		});
-	} else {
-		var errorsKeys = Object.keys(errors);
-		forEach(errorsKeys, function(key){
-			var newError = document.createElement('div');
-			if (key === 'url') {
-				var new_link = document.createElement('a');
-				new_link.href = errors[key];
-				new_link.innerText = errors[key];
-				newError.innerText = key + ": ";
-				newError.appendChild(new_link);
-			} else {
-				newError.innerText = key + ': ' + errors[key];
-			}
-			errorsInner.appendChild(newError);
-		});
-	}
-	return errorsInner;
-}
-
-// Очень большой секрет
-const secretPass = '\u0050\u0073\u0073\u0077\u006f\u0072\u0064';
-
-const checkPass = () => {
-  const getPass = prompt('Для управления Wireguard требуется ввести пароль', '');
-  return obfusPa(getPass) === obfusPa(secretPass);
-}
-
-function jsonToHTML (json, level = 0) {
+function objectToHTML(json, level = 0) {
     let html = '';
 
     if (typeof json === 'object' && json !== null) {
@@ -143,7 +126,7 @@ function jsonToHTML (json, level = 0) {
               let valueHTML = '';
 
               if (typeof value === 'object' && value !== null) {
-                valueHTML = jsonToHTML(value, level + 1);
+                valueHTML = objectToHTML(value, level + 1);
               } else {
                 valueHTML = String(value);
               }
@@ -157,7 +140,7 @@ function jsonToHTML (json, level = 0) {
     return html;
 }
 
-function renderPeerBlocks (peersData = []) {
+function renderPeerBlocks(peersData = []) {
   let html = '<h3>Peers</h3>';
   peersData.map((peer) => {
     html += `<div class="peerblock"><h4>${peer.name || ' '} <i>[edit]</i></h4><div class="pubkeyblock">${peer['public key'] || peer.PublicKey}</div>`;
@@ -172,12 +155,32 @@ function renderPeerBlocks (peersData = []) {
   return html;
 }
 
-const obfusPa = (str) => str.split('').map((char, i) => "\\u" + (str.charCodeAt(i)).toString(16).padStart(4, '0')).join('');
-const deobfusPa = (str) => {
-  try {
-    return str.replace(/\\u([\dA-F]{4})/gi, (match, p1) => String.fromCharCode(parseInt(p1, 16)));
-  } catch (e) {
-    console.error('Error during decoding', e);
-    return null;
-  }
+function renderInterfaceList(buttonsArray, listBlock) {
+  buttonsArray.map(radiobtn => {
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.setAttribute('type', 'radio');
+    input.setAttribute('name', 'interfaces');  // имя группы радиокнопок должно быть одинаковым
+    input.setAttribute('checked', radiobtn.checked);
+    input.value = radiobtn.value;
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(radiobtn.value));
+    listBlock.appendChild(label);
+    listBlock.appendChild(document.createElement('br')); // добавляем перенос строки после каждого элемента
+  })
+}
+
+function clearError() = {
+  if (timerId) { clearTimeout(timerId); }
+  var errorBlock = document.getElementById('error-block');
+  var errorCode = document.getElementById('errors-code');
+  errorBlock.style.display = 'none';
+  errorCode.innerHTML = '';
+}
+
+function renderError(err) = {
+  var errorBlock = document.getElementById('error-block');
+  var errorCode = document.getElementById('errors-code');
+  errorBlock.style.display = 'block';
+  errorCode.innerHTML = (typeof(err) === 'object') ? objectToHTML(err) : err;
 }

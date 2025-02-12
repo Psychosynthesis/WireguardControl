@@ -1,6 +1,7 @@
 {
   "name": "wg-control",
   "version": "1.0.0",
+  "description": "Another flexable Wireguard web-interface",
   "main": "server.js",
   "license": "MIT",
   "private": true,
@@ -12,8 +13,10 @@
     "express": "^4.17.1",
     "flatted": "^3.3.1",
     "jsonwebtoken": "^8.5.1",
-    "nodemon": "^2.0.15",
     "vanicom": "^1.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
   },
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon server.js",

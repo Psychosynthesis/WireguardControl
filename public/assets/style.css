@@ -26,6 +26,8 @@ button:hover { color: #fff; }
 
 fieldset { border: 1px solid rgba(120, 130, 140, 0.6); border-radius: 5px; }
 
+#error-block { display: none; }
+#errors-code { color: #ff5555; }
 #config-tab, #status-tab { flex-grow: 1; }
 #ifaces-list { margin-bottom: 40px; }
 

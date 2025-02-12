@@ -1,12 +1,18 @@
 import path from 'path';
 import { writeFileSync } from 'fs';
 import { Readable } from 'stream';
+import { isExistAndNotNull } from 'vanicom';
 
 import {
   appendDataToConfig,
-  getAllInterfacePeersIPs,
+  checkInterface,
+  getActiveInterfaceses,
+  getDefaultInterface,
+  getInterfacePeersIPs,
+  getIfaceParams,
+  getFirstAvailableIP,
   genNewClientKeys,
-  parseWGConfig,
+  parseInterfaceConfig,
   readJSON,
   saveJSON,
   formatConfigToString,
@@ -17,17 +23,16 @@ import {
 // Проверяются только загруженные в память конфиги! Для проверки сохранённых написать другой метод.
 export const getInterfaceConfig = async (req, res, next) => {
   const iface = req.query.iface;
-  const activeInterfacesList = Object.keys(global.wgControlServerSettings.interfaces);
-
-  if (!iface || !activeInterfacesList.includes(iface)) {
+  if (!checkInterface(iface)) {
     return res.status(422).json({ success: false, errors: 'Incorrect interface!' });
   }
 
   try {
     // Парсим конфиг
-    const currentConfig = await parseWGConfig(`/etc/wireguard/${iface}.conf`);
+    const currentConfig = await parseInterfaceConfig(iface);
 
-    console.log("Busy IP's list: ", getAllInterfacePeersIPs(iface))
+    const newIP = getFirstAvailableIP(getInterfacePeersIPs(iface), '24');
+    console.log('New free IP: ', newIP)
 
     res.status(200).json({ success: true, data: currentConfig });
   } catch (e) {
@@ -40,9 +45,10 @@ export const getInterfaceConfig = async (req, res, next) => {
 // Получаем список доступных интерфейсов
 export const getInterfaces = async (req, res, next) => {
   try {
-    const activeInterfacesList = Object.keys(global.wgControlServerSettings.interfaces);
+    const activeInterfacesList = getActiveInterfaceses();
+    const defaultIface = getDefaultInterface();
     const interfacesListForSelect = activeInterfacesList.map(
-      file => ({ checked: file === global.wgControlServerSettings.defaultInterface, value: file })
+      file => ({ checked: file === defaultIface, value: file })
     );
 
     res.status(200).json({
@@ -56,43 +62,66 @@ export const getInterfaces = async (req, res, next) => {
   }
 }
 
+// Получаем первый свободный IP для интерфейса
+export const getFirstFreeIP = async (req, res, next) => {
+  const iface = req.query.iface;
+  try {
+    const ifaceParams = getIfaceParams(iface);
+    if (!ifaceParams.success) { return res.status(422).json(ifaceParams); }
+
+    const busyIPs = getInterfacePeersIPs(iface);
+    const { cidr: serverCIDR } = ifaceParams.data;
+    res.status(200).json({
+      success: true,
+      data: getFirstAvailableIP(busyIPs, serverCIDR),
+    });
+
+  } catch (e) {
+    console.error('getFirstFreeIP service error: ', e)
+    res.status(520).json({ success: false, errors: 'Can`t get new free IP' });
+    next(e);
+  }
+}
+
 export const addNewClient = async (req, res, next) => {
-  const newIp = req.body?.ip;
+  const requestedIP = req.body?.ip;
   const newName = req.body?.name;
   const iface = req.body?.iface;
-  const activeInterfacesList = Object.keys(global.wgControlServerSettings.interfaces);
-
-  if (!newIp) {
-    return res.status(400).json({ success: false, errors: 'AllowedIPs must be provided' });
-  }
-
-  if (!iface || !activeInterfacesList.includes(iface)) {
-    return res.status(422).json({ success: false, errors: 'Incorrect interface!' });
-  }
 
   try {
+    const ifaceParams = getIfaceParams(iface);
+    if (!ifaceParams.success) { return res.status(400).json(ifaceParams); }
+    const { cidr: serverCIDR, pubkey: serverPubKey, endpoint: serverIP, port: serverWGPort } = getIfaceParams(iface).data;
+    const busyIPs = getInterfacePeersIPs(iface);
+
+    if (isExistAndNotNull(requestedIP) && busyIPs.includes(requestedIP)) {
+      return res.status(400).json({ success: false, errors: 'Requested IP for new client is already in use' });
+    }
+
     const newClientData = await genNewClientKeys();
+    const newIP = requestedIP || getFirstAvailableIP(busyIPs, serverCIDR);
 
     await appendDataToConfig(
       '/etc/wireguard/'+iface+'.conf',
-      formatObjectToConfigSection('Peer', { PublicKey: newClientData.pubKey, PresharedKey: newClientData.presharedKey, AllowedIPs: newIp }),
+      formatObjectToConfigSection('Peer', { PublicKey: newClientData.pubKey, PresharedKey: newClientData.presharedKey, AllowedIPs: newIP }),
     );
 
     let parsedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
     parsedPeers[newClientData.pubKey] = { // Сохраняем клиента в наших данных
-      active: true,
       name: newName ?? '',
-      PresharedKey: newClientData.presharedKey
+      active: true,
+      ip: newIP,
+      PresharedKey: newClientData.presharedKey,
     };
     saveJSON(path.resolve(process.cwd(), './.data/peers.json'), parsedPeers);
 
     const formattedConfig = formatConfigToString({
-      Interface: { PrivateKey: newClientData.randomKey, Address: newIp, DNS: '1.1.1.1' },
+      Interface: { PrivateKey: newClientData.randomKey, Address: newIP, DNS: '1.1.1.1' },
       Peer: {
         PresharedKey: newClientData.presharedKey,
-        PublicKey: global.wgControlServerSettings.interfaces[iface].pubkey,
+        PublicKey: serverPubKey,
         AllowedIPs: '0.0.0.0/0',
-        Endpoint: `${global.wgControlServerSettings.endpoint}:${global.wgControlServerSettings.interfaces[iface].port}`,
+        Endpoint: `${serverIP}:${serverWGPort}`,
         PersistentKeepalive: 25
       }
     });
@@ -101,13 +130,6 @@ export const addNewClient = async (req, res, next) => {
     res.setHeader('Content-Disposition', `attachment; filename="${newName ? newName + '.conf' : 'Client.conf'}"`);
     res.send(formattedConfig);
     res.end();
-
-    /*
-    const readableStream = new Readable();
-    readableStream.push(formattedConfig);
-    readableStream.push(null);
-    readableStream.pipe(res);
-    */
     next('route');
   } catch (e) {
     console.error('addNewClient service error: ', e)
