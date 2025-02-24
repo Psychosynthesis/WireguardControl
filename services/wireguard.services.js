@@ -19,7 +19,7 @@ export const getWGStatus = async (req, res, next) => {
 
 export const rebootWG = async (req, res, next) => {
   const iface = req.query.iface;
-  if (!checkInterface(iface)) {
+  if (!ifaceCorrect(iface)) {
     return res.status(422).json({ success: false, errors: 'Incorrect interface!' });
   }
 

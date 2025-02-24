@@ -1,5 +1,6 @@
 var timerId;
 var freeIP = '';
+
 const defaultUpdateInterval = 3000;
 const ipRegex = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
 const validateIPWithSubnet = (input) => ipRegex.test(input);
@@ -7,18 +8,59 @@ const validateIPWithSubnet = (input) => ipRegex.test(input);
 // Очень большой секрет
 const secretPass = '\u0050\u0073\u0073\u0077\u006f\u0072\u0064';
 
-const checkPass = () => {
+function checkPass(){
   const getPass = prompt('Для управления Wireguard требуется ввести пароль', '');
   return obfusPa(getPass) === obfusPa(secretPass);
 }
-const obfusPa = (str) => str.split('').map((char, i) => "\\u" + (str.charCodeAt(i)).toString(16).padStart(4, '0')).join('');
-const deobfusPa = (str) => {
+
+function obfusPa (str) { str.split('').map((char, i) => "\\u" + (str.charCodeAt(i)).toString(16).padStart(4, '0')).join(''); }
+function deobfusPa (str){
   try {
     return str.replace(/\\u([\dA-F]{4})/gi, (match, p1) => String.fromCharCode(parseInt(p1, 16)));
   } catch (e) {
     console.error('Error during decoding', e);
     return null;
   }
+}
+
+const HideToast = () => {
+	var checkContainer = document.getElementsByClassName('toast-container')[0];
+	var toastsMessages = checkContainer.getElementsByClassName('toast-message');
+	if (toastsMessages.length > 1) {
+		checkContainer.removeChild(toastsMessages[toastsMessages.length - 1]);
+		setTimeout(HideToast, 3000);
+	} else {
+		document.body.removeChild(checkContainer);
+	}
+}
+
+const Toast = (messageToShow) => {
+	var container;
+	var toastsContainer = document.getElementsByClassName('toast-container');
+	var messageDiv = document.createElement('div');
+	messageDiv.classList.add('toast-message');
+	messageDiv.textContent = messageToShow ? messageToShow : 'Message...';
+
+	if (toastsContainer.length === 0) {
+		container = document.createElement('div');
+		container.classList.add('toast-container');
+		container.style.position = 'fixed';
+		container.style.top = '90px';
+		container.style.right = '50%';
+	  container.style.maxWidth = '300px';
+		container.style.zIndex = '100000';
+		container.style.background = '#139ecc';
+		container.style.color = '#ffffff';
+		container.style.padding = '10px 20px';
+		container.style.border = '1px solid rgba(255, 255, 255, 0.5)';
+    container.style.borderRadius = '5px';
+		container.style.wordBreak = 'break-word';
+		document.body.append(container);
+		setTimeout(HideToast, 2500);
+	} else {
+		container = toastsContainer[0];
+	}
+	container.append(messageDiv);
 }
 
 function makeRequest(makeRequestArguments) {
@@ -167,10 +209,10 @@ function renderInterfaceList(buttonsArray, listBlock) {
     label.appendChild(document.createTextNode(radiobtn.value));
     listBlock.appendChild(label);
     listBlock.appendChild(document.createElement('br')); // добавляем перенос строки после каждого элемента
-  })
+  });
 }
 
-function clearError() = {
+function clearErrorAndTimeout() {
   if (timerId) { clearTimeout(timerId); }
   var errorBlock = document.getElementById('error-block');
   var errorCode = document.getElementById('errors-code');
@@ -178,9 +220,29 @@ function clearError() = {
   errorCode.innerHTML = '';
 }
 
-function renderError(err) = {
+function renderError(err) {
   var errorBlock = document.getElementById('error-block');
   var errorCode = document.getElementById('errors-code');
   errorBlock.style.display = 'block';
   errorCode.innerHTML = (typeof(err) === 'object') ? objectToHTML(err) : err;
 }
+
+function download(blob, filename) {
+	if (typeof blob == "object") {
+		if (window.navigator.msSaveBlob) return window.navigator.msSaveBlob(blob,filename);
+		blob = window.URL.createObjectURL(blob);
+	}
+	var s = document.createElement("a");
+	s.href = blob,
+	s.download = filename,
+	document.body.appendChild(s),
+	s.click(),
+	setTimeout(function(){
+		window.URL.revokeObjectURL(blob);
+		document.body.removeChild(s);
+		s.remove();
+	}, 300);
+}
+
+// var blob = new Blob(["111111\n2222222\n333333"], { type: "text/plain" });
+// download(blob, "test.txt");

@@ -34,6 +34,7 @@ export const loadServerConfig = async () => {
 
         const interfacePeers = []; // Все активные клиенты интерфейса
 
+
         // Актуализируем данные по сохранённым пирам из конфига интерфейса на случай
         // если конфиг менялся при перезагрузке WireguardControl
         peers.map(peer => {
@@ -41,7 +42,7 @@ export const loadServerConfig = async () => {
           savedPeers = {
             ...savedPeers,
             [peer.PublicKey]: {
-              name: isExistAndNotNull(savedPeers[peer.PublicKey].name) ? savedPeers[peer.PublicKey].name : '',
+              name: savedPeers[peer.PublicKey]?.name ? savedPeers[peer.PublicKey].name : '',
               active: true,
               ip: peer.AllowedIPs,
               PresharedKey: peer.presharedKey
@@ -116,13 +117,13 @@ export const getDefaultInterface = () => {
   return global.wgControlServerSettings.defaultInterface;
 }
 
-export const checkInterface = (iface) => {
+export const ifaceCorrect = (iface) => {
   const activeInterfacesList = getActiveInterfaceses();
   return (isExistAndNotNull(iface) && activeInterfacesList.includes(iface))
 }
 
 export const getIfaceParams = (iface) => {
-  if (checkInterface(iface)) {
+  if (!ifaceCorrect(iface)) {
     return { success: false, errors: 'Incorrect interface!' };
   }
 

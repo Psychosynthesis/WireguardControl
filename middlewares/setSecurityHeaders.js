@@ -10,7 +10,7 @@ export const setSecurityHeaders = (req, res, next) => {
     'Referrer-Policy': 'no-referrer',
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Expect-CT': 'enforce, max-age=86400',
-    'Content-Security-Policy': "default-src *; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
+    'Content-Security-Policy': "default-src *; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'",
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()'
   })
   next();

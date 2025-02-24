@@ -5,7 +5,7 @@ import { isExistAndNotNull } from 'vanicom';
 
 import {
   appendDataToConfig,
-  checkInterface,
+  ifaceCorrect,
   getActiveInterfaceses,
   getDefaultInterface,
   getInterfacePeersIPs,
@@ -23,7 +23,7 @@ import {
 // Проверяются только загруженные в память конфиги! Для проверки сохранённых написать другой метод.
 export const getInterfaceConfig = async (req, res, next) => {
   const iface = req.query.iface;
-  if (!checkInterface(iface)) {
+  if (!ifaceCorrect(iface)) {
     return res.status(422).json({ success: false, errors: 'Incorrect interface!' });
   }
 
@@ -50,7 +50,6 @@ export const getInterfaces = async (req, res, next) => {
     const interfacesListForSelect = activeInterfacesList.map(
       file => ({ checked: file === defaultIface, value: file })
     );
-
     res.status(200).json({
       success: true,
       data: interfacesListForSelect
@@ -68,7 +67,6 @@ export const getFirstFreeIP = async (req, res, next) => {
   try {
     const ifaceParams = getIfaceParams(iface);
     if (!ifaceParams.success) { return res.status(422).json(ifaceParams); }
-
     const busyIPs = getInterfacePeersIPs(iface);
     const { cidr: serverCIDR } = ifaceParams.data;
     res.status(200).json({

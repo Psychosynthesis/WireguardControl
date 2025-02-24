@@ -167,6 +167,83 @@ function tryReboot(){
   });
 }
 
+function generateQR() {
+  var privkey = document.getElementById("privkey").value;
+  var ip = document.getElementById("ip").value;
+  var psk = document.getElementById("psk").value;
+  var dns = document.getElementById("dns");
+  var ks = document.getElementById("ks");
+  var node = document.getElementById("nodes");
+  var server = node.value.replace(/([a-z]+\.cstorm\.is):(.*)/, '$1');
+  var pubkey = node.value.replace(/([a-z]+\.cstorm\.is):(.*)/, '$2');
+  document.getElementById("status").style = "display:none";
+  if (!privkey || privkey.length === 0) {
+    doErr("Error: You didn't enter a private key");
+    return;
+  }
+  if (privkey.length != 44) {
+    doErr("Error: " + privkey + " is " + privkey.length + " characters long.<br>Private keys should be 44 characters long.");
+    return;
+  }
+  if (!/^[a-zA-Z0-9\+\/\=]{44}/.test(privkey)) {
+    doErr("Error: The private key " + privkey + " contains invalid characters.<br>Valid characters are: a-z, A-Z, 0-9, +, /, and =");
+    return;
+  }
+  if (!ip || ip.length === 0) {
+    doErr("Error: You didn't enter an IP");
+    return;
+  }
+  ip = ip.replace(/\/32$/, '');
+  ip = ip.replace(/ /g, '');
+  if (!/^10\.10\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ip)) {
+    doErr("Error: The IP " + ip + " is invalid.<br>The IP should be in the format of 10.10.x.x where x is 0-255");
+    return;
+  }
+  if (!psk || psk.length === 0) {
+    doErr("Error: You didn't enter a PSK");
+    return;
+  }
+  if (psk.length != 44) {
+    doErr("Error: " + psk + " is " + psk.length + " characters long.<br>The PSK should be 44 characters long.");
+    return;
+  }
+  if (!/^[a-zA-Z0-9\+\/\=]{44}/.test(psk)) {
+    doErr("Error: The PSK " + psk + " contains invalid characters.<br>Valid characters are: a-z, A-Z, 0-9, +, /, and =");
+    return;
+  }
+
+  if (dns.checked) {
+    var dns = "10.31.33.7";
+  } else {
+    var dns = "10.31.33.8";
+  }
+  if (ks.checked) {
+    var al = "0.0.0.0/0";
+  } else {
+    var al = "0.0.0.0/1, 128.0.0.0/1";
+  }
+
+  var conf = `[Interface]\n
+  PrivateKey = ${privkey}\n
+  Address = ${ip}\n
+  DNS = ${dns}\n \n
+  [Peer]\n
+  Presharedkey = ${psk}\n
+  PublicKey = ${pubkey}\n
+  Endpoint = ${server}:443\n
+  AllowedIPs = ${al} \n
+  PersistentKeepalive = 25`
+  document.getElementById("bottomthing").innerHTML = "";
+  var qrcode = new QRCode(document.getElementById("bottomthing"), {
+    text: conf,
+    width: 478,
+    height: 478,
+    colorDark : "#000000",
+    colorLight : "#ffffff",
+    correctLevel : QRCode.CorrectLevel.H
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   if (!checkPass()) { alert('Пароль не верный'); return; }
 

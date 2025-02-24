@@ -67,7 +67,7 @@ AllowedIPs = 10.8.1.3
 Вторая команда: \
 ```ip addr show eth0 | grep "inet" | grep -v "inet6" | head -n 1 | awk '/inet/ {print $2}' | awk -F/ '{print $1}'```
 Команда получает данные интерфейса eth0 и вытаскивает из этих данных IP-адрес, в итоге превращаясь в следующую: \
-```ip rule add from 54.41.229.22 table main```
+```ip rule add from EXTERNAL_IP table main```
 
 Это необходимо для основного сервера, потому что иначе при активации маршрута 0.0.0.0/0 он начинает пересылать ответы на пакеты, приходящие ему на внешние адреса через туннель WG. Наша out-node на том конце, конечно, пересылает их по назначению, но тут уже не готов отправитель пакета: он присылает что-то на внешний адрес нашего основного сервера, а ответ ему приходит с out-node.
 
@@ -114,14 +114,17 @@ iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 sudo iptables-save
 ```
 
-Способ автоматически добавлять правила после перезагрузки:
+Также рекомендуется добавить защиту от перебора пароля, например с помощью пакета fail2ban
 ```bash
-sudo iptables-save | sudo tee /etc/iptables.conf
+sudo apt update
+sudo apt install fail2ban -y
+sudo systemctl enable fail2ban
 ```
-После этого добавить в /etc/rc.local:
-```
-# Load iptables rules from this file
-iptables-restore < /etc/iptables.conf
+Настройки Fail2ban хранятся в конфигурационном файле `/etc/fail2ban/jail.conf`.
+Его следует скопировать в эту же директорию и переименовать в `jail.local`:
+
+```bash
+sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
 ```
 
 =====================================================================
