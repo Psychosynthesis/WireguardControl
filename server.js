@@ -5,17 +5,15 @@ import path from 'path';
 import { stringify } from 'flatted';
 
 import { setSecurityHeaders, verifyClient } from './middlewares/index.js';
-import { readJSON, loadServerConfig } from './utils/index.js';
+import { loadServerConfig, getFrontendConfig } from './utils/index.js';
 
 import configRouter from './routes/config.router.js';
 import wireguardRouter from './routes/wireguard.router.js';
 import frontendRouter from './routes/frontend.router.js';
 
-const savedSettings = readJSON(path.resolve(process.cwd(), './config.json'));
-const { webServerPort, allowedOrigins } = savedSettings;
+await loadServerConfig(); // Загружаем конфиги
+const { frontServerPort, allowedOrigins } = getFrontendConfig();
 // Важно! Слэш в конце адреса в allowedOrigins не нужен!
-
-await loadServerConfig();
 
 const app = express();
 app.disable('x-powered-by'); // Remove unnecs header
@@ -37,6 +35,6 @@ app.use((err, req, res, next) => {
   }
 })
 
-app.listen(webServerPort, () => {
-  console.log(`Wireguard-control ready on http://localhost:${webServerPort}`)
+app.listen(frontServerPort, () => {
+  console.log(`Wireguard-control ready on http://localhost:${frontServerPort}`)
 })

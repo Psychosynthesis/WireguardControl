@@ -19,4 +19,5 @@ yarn-error.log
 .editorconfig
 .data
 
-# Dev mode
+# Ignore config file
+config.json

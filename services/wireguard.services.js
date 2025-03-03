@@ -4,12 +4,14 @@ import {
   getStatusFromBash,
   getAllConfigs,
   setWGStatus,
+  encryptMsg
 } from '../utils/index.js';
 
 export const getWGStatus = async (req, res, next) => {
   try {
     const parsedStatus = await getStatusFromBash();
-    res.status(200).json(parsedStatus);
+    const cipher = await encryptMsg(parsedStatus);
+    res.status(200).json(cipher);
   } catch (e) {
     console.error('getWGStatus service error: ', e)
     res.status(520).json({ success: false, errors: 'Can`t get Wireguard status' });

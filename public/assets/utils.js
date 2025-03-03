@@ -5,24 +5,6 @@ const defaultUpdateInterval = 3000;
 const ipRegex = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
 const validateIPWithSubnet = (input) => ipRegex.test(input);
 
-// Очень большой секрет
-const secretPass = '\u0050\u0073\u0073\u0077\u006f\u0072\u0064';
-
-function checkPass(){
-  const getPass = prompt('Для управления Wireguard требуется ввести пароль', '');
-  return obfusPa(getPass) === obfusPa(secretPass);
-}
-
-function obfusPa (str) { str.split('').map((char, i) => "\\u" + (str.charCodeAt(i)).toString(16).padStart(4, '0')).join(''); }
-function deobfusPa (str){
-  try {
-    return str.replace(/\\u([\dA-F]{4})/gi, (match, p1) => String.fromCharCode(parseInt(p1, 16)));
-  } catch (e) {
-    console.error('Error during decoding', e);
-    return null;
-  }
-}
-
 const HideToast = () => {
 	var checkContainer = document.getElementsByClassName('toast-container')[0];
 	var toastsMessages = checkContainer.getElementsByClassName('toast-message');
@@ -133,7 +115,7 @@ function makeRequest(makeRequestArguments) {
   else { httpRequest.send(makeRequestArguments.data); }
 }
 
-function responseHandler(response) {
+function responseHandler(response, passkey) {
   var result = { success: false, data: null };
   var convertedResponse;
   if (typeof(response) === "string") {
@@ -141,9 +123,18 @@ function responseHandler(response) {
 			console.log('Response is empty.');
 			return result;
 		}
-    try { convertedResponse = JSON.parse(response); }
-    catch (parseErr) {
-      console.log('Error in responseHandler on JSON.parse(response): ', parseErr);
+    try {
+      convertedResponse = JSON.parse(response);
+      if (passkey && convertedResponse.hasOwnProperty('v')) {
+        const { data, v: vector } = convertedResponse;
+        // Распаковка данных
+        const decrypted = JSON.parse(decrypt(unpack(data), passkey, unpack(vector)));
+        convertedResponse.data = decrypted;
+      } else if (!convertedResponse.hasOwnProperty('data')) {
+        console.error('Incorrect encrypted response: ', convertedResponse);
+      }
+    } catch (parseErr) {
+      console.log('Error in responseHandler on parsing response: ', parseErr);
       console.log('Response is: ', response);
     }
   } else if (response.hasOwnProperty('success')) {
@@ -224,7 +215,7 @@ function renderError(err) {
   var errorBlock = document.getElementById('error-block');
   var errorCode = document.getElementById('errors-code');
   errorBlock.style.display = 'block';
-  errorCode.innerHTML = (typeof(err) === 'object') ? objectToHTML(err) : err;
+  errorCode.innerHTML = (typeof(err) === 'object') ? objectToHTML(err) : `<pre>${err}</pre>`;
 }
 
 function download(blob, filename) {

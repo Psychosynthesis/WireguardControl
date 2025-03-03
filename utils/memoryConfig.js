@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import { isExistAndNotNull } from 'vanicom';
 
@@ -5,8 +6,33 @@ import {
   getStatusFromBash, getAllConfigs, readJSON, saveJSON, COLORS, genPubKey, getServerIP, parseInterfaceConfig
 } from './index.js';
 
+const loadFrontendConfig = () => {
+  // Хелпер для загрузки конфига сервера веб-морды
+  const configPath = path.resolve(process.cwd(), './config.json');
+  const exampleConfigPath = path.resolve(process.cwd(), 'config.example.json');
+  if (!fs.existsSync(configPath)) { // Конфига нет
+    console.log('config.json not found')
+    if (fs.existsSync(exampleConfigPath)) { // Пытаемся читать дефолтный
+      fs.renameSync(exampleConfigPath, configPath);
+      console.log('config.example.json renamed in config.json');
+    } else {
+      console.log(COLORS.Red, ' ');
+      console.error(`No one config files found! Create a config.json file in the project root with the next params: {
+  "defaultInterface": (string),
+  "frontServerPort": (number),
+  "allowedOrigins": [string, string]
+}`);
+      console.log(COLORS.Reset, ' ');
+      throw new Error('Config files not found');
+    }
+  }
+
+  const config = readJSON(configPath, true);
+  return config;
+}
+
 export const loadServerConfig = async () => {
-  let serverSettings = readJSON(path.resolve(process.cwd(), './config.json'));
+  let frontendSettings = loadFrontendConfig(); // Вывалится с ошибкой, если никакого конфига не будет найдено
   let savedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
   const savedInterfaces = readJSON(path.resolve(process.cwd(), './.data/interfaces.json'), true);
 
@@ -14,16 +40,22 @@ export const loadServerConfig = async () => {
   const allConfiguredInterfaces = await getAllConfigs();
   const externalIP = await getServerIP();
   const wgStatus = await getStatusFromBash();
-  const { allowedOrigins, defaultInterface } = serverSettings;
-  let allActivePeers = []; // Для проверки все ли сохранённые клиенты есть в конфигах
+
+  const { allowedOrigins, defaultInterface, frontServerPort, frontendPasskey } = frontendSettings;
+  // Важно! Слэш в конце адреса в allowedOrigins не нужен!
 
   let configInMemory = {
+    allowedOrigins, // Нужно для конфигурации веб-морды
+    frontServerPort,
+    frontendPasskey,
     wgIsWorking: wgStatus.success,
     configIsOk: true,
     endpoint: externalIP,
     defaultInterface: '',
     interfaces: {},
   };
+
+  let allActivePeers = []; // Для проверки все ли сохранённые клиенты есть в конфигах
 
   if (allConfiguredInterfaces.success) {
     for (let i=0; i < allConfiguredInterfaces.data.length; i++) {
@@ -94,9 +126,9 @@ export const loadServerConfig = async () => {
     !isExistAndNotNull(defaultInterface) || !correctParsedIfaces.includes(defaultInterface)
   ) {
     const newDefaultInt = configInMemory.interfaces[correctParsedIfaces[0]];
-    serverSettings.defaultInterface = newDefaultInt;
+    frontendSettings.defaultInterface = newDefaultInt;
 
-    saveJSON(path.resolve(process.cwd(), './config.json'), serverSettings);
+    saveJSON(path.resolve(process.cwd(), './config.json'), frontendSettings);
     console.log('defaultInterface from ./config.json missing or incorrect, set new: ', newDefaultInt);
   }
 
@@ -115,6 +147,14 @@ export const getActiveInterfaceses = () => {
 
 export const getDefaultInterface = () => {
   return global.wgControlServerSettings.defaultInterface;
+}
+
+export const getFrontendConfig = () => {
+  return {
+    allowedOrigins: global.wgControlServerSettings.allowedOrigins,
+    frontServerPort: global.wgControlServerSettings.frontServerPort,
+    frontendPasskey: global.wgControlServerSettings.frontendPasskey
+  }
 }
 
 export const ifaceCorrect = (iface) => {

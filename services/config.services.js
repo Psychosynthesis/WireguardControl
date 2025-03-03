@@ -5,6 +5,7 @@ import { isExistAndNotNull } from 'vanicom';
 
 import {
   appendDataToConfig,
+  encryptMsg,
   ifaceCorrect,
   getActiveInterfaceses,
   getDefaultInterface,
@@ -19,7 +20,7 @@ import {
   formatObjectToConfigSection
 } from '../utils/index.js';
 
-// Получить конфиг конкретного интерфейса
+// Получить конфиг конкретного интерфейса (api/config?iface=wg)
 // Проверяются только загруженные в память конфиги! Для проверки сохранённых написать другой метод.
 export const getInterfaceConfig = async (req, res, next) => {
   const iface = req.query.iface;
@@ -30,11 +31,8 @@ export const getInterfaceConfig = async (req, res, next) => {
   try {
     // Парсим конфиг
     const currentConfig = await parseInterfaceConfig(iface);
-
-    const newIP = getFirstAvailableIP(getInterfacePeersIPs(iface), '24');
-    console.log('New free IP: ', newIP)
-
-    res.status(200).json({ success: true, data: currentConfig });
+    const cipher = await encryptMsg(currentConfig);
+    res.status(200).json(cipher);
   } catch (e) {
     console.error('getConfig service error: ', e)
     res.status(520).json({ success: false, errors: 'Can`t get Wireguard config' });

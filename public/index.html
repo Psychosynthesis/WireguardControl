@@ -7,6 +7,8 @@
     <link rel="shortcut icon" sizes="96x96" href="/assets/icon.png" />
     <link rel="stylesheet" type="text/css" href="/assets/style.css" />
     <script type="text/javascript" src="/assets/vanicom.min.js"></script>
+    <script type="text/javascript" src="assets/forge.js"></script>
+    <script type="text/javascript" src="assets/cypher.js"></script>
     <script type="text/javascript" src="/assets/utils.js"></script>
     <title>Wireguard Control</title>
 </head>
@@ -14,8 +16,11 @@
     <div id="main-node">
       <h2>Wireguard Control</h2>
       <div class="infoblock">
-        <div id="error-block"><pre id="errors-code"></pre></div>
-        <div id="status-tab"><h3>Status</h3><div id="status-block"></div></div>
+        <div id="status-tab">
+          <h3>Status</h3>
+          <div id="error-block"><pre id="errors-code"></pre></div>
+          <div id="status-block"></div>
+        </div>
         <div id="config-tab" style="display: none;"></div>
         <div class="menublock">
           <div class="buttonsblock">
@@ -25,6 +30,10 @@
             <button onclick="addNewClient()">Add Client</button> &nbsp;
           </div>
           <div><fieldset id="ifaces-list"><legend>Выбор интерфейса</legend></fieldset></div>
+          <div>
+            Введите ключ для расшифровки данных:
+            <input id="passkey-input" placeholder="Pass key" type="text" onkeyup="getStatus()" />
+          </div>
         </div>
       </div>
     </div>
@@ -32,6 +41,7 @@
 <script type="text/javascript">
 // React и Vue - для слабаков
 const currentIface = () => document.querySelector('#ifaces-list input[type="radio"]:checked')?.value;
+const getPass = () => unpack(document.querySelector('#passkey-input')?.value);
 
 function getFreeIP() {
   makeRequest({
@@ -60,18 +70,24 @@ function getStatus() {
     url: '/api/wireguard/status',
     type: 'GET',
     callback: function (response) {
-      var res = responseHandler(response);
+      var res = responseHandler(response, getPass());
       if (!res.success) { renderError(res.data); }
       else {
+        const { data: statsData } = res.data;
+        if (!statsData) {
+          renderError('Некорректный ключ расшифровки');
+          return;
+        }
+
         var statusBlock = document.getElementById('status-block');
         statusBlock.innerHTML = '';
         const divElem = document.createElement('div');
         divElem.className = "text";
         divElem.innerHTML =
-          `<b>Interface name: </b> ${res.data.interface.name} <br />
-          <b>Public key: </b>${res.data.interface['public key']} <br />
-          <b>Listening port: </b>${res.data.interface['listening port']} <br /><br />
-          ${renderPeerBlocks(res.data.peers)} <br />`;
+          `<b>Interface name: </b> ${statsData.interface.name} <br />
+          <b>Public key: </b>${statsData.interface['public key']} <br />
+          <b>Listening port: </b>${statsData.interface['listening port']} <br /><br />
+          ${renderPeerBlocks(statsData.peers)} <br />`;
         statusBlock.append(divElem);
 
         timerId = setTimeout(getStatus, defaultUpdateInterval);
@@ -93,15 +109,21 @@ function getConfig() {
     url: `/api/config?iface=${currentIface()}`,
     type: 'GET',
     callback: function (response) {
-      var res = responseHandler(response);
+      var res = responseHandler(response, getPass());
       if (!res.success) { renderError(res.data); }
       else {
+        const configData = res?.data;
+        if (!configData) {
+          renderError('Некорректный ключ расшифровки');
+          return;
+        }
+
         configTab.innerHTML = '';
         const divElem = document.createElement('div');
         divElem.className = "text";
         divElem.innerHTML =
-          '<h3>Interface</h3>' + objectToHTML(res.data.interface) + '<br />' +
-          renderPeerBlocks(res.data.peers);
+          '<h3>Interface</h3>' + objectToHTML(configData.interface) + '<br />' +
+          renderPeerBlocks(configData.peers);
         configTab.append(divElem);
       }
     },
@@ -168,9 +190,10 @@ function tryReboot(){
 }
 
 function generateQR() {
-  var privkey = document.getElementById("privkey").value;
-  var ip = document.getElementById("ip").value;
-  var psk = document.getElementById("psk").value;
+  // Stoled from cryptostorm.is/wgconfqr
+  var privkey = document.getElementById("privkey").value; // Example: L+V9o0fN345VKNqsX7spBzD/9oSvxM/C7ZCZX1jLO3Q=
+  var ip = document.getElementById("ip").value; // '10.10.2.1'
+  var psk = document.getElementById("psk").value; // L+V9o0fN345VKNqsX7spBzD/9oSvxM/C7ZCZX1jLO3Q=
   var dns = document.getElementById("dns");
   var ks = document.getElementById("ks");
   var node = document.getElementById("nodes");
@@ -245,8 +268,6 @@ function generateQR() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  if (!checkPass()) { alert('Пароль не верный'); return; }
-
   // Получаем список доступных интерфейсов прежде чем запрашивать статус
   makeRequest({
     url: '/api/config/interfaces',
