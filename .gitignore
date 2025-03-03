@@ -20,4 +20,4 @@ yarn-error.log
 .data
 
 # Ignore config file
-# config.json
+config.json
