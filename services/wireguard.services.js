@@ -4,7 +4,8 @@ import {
   getStatusFromBash,
   getAllConfigs,
   setWGStatus,
-  encryptMsg
+  encryptMsg,
+  ifaceCorrect
 } from '../utils/index.js';
 
 export const getWGStatus = async (req, res, next) => {

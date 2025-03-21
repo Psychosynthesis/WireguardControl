@@ -11,6 +11,7 @@ import {
   getDefaultInterface,
   getInterfacePeersIPs,
   getIfaceParams,
+  getCurrentEndpoint,
   getFirstAvailableIP,
   genNewClientKeys,
   parseInterfaceConfig,
@@ -30,7 +31,8 @@ export const getInterfaceConfig = async (req, res, next) => {
 
   try {
     // Парсим конфиг
-    const currentConfig = await parseInterfaceConfig(iface);
+    let currentConfig = await parseInterfaceConfig(iface);
+    currentConfig['interface']['External IP'] = getCurrentEndpoint();
     const cipher = await encryptMsg(currentConfig);
     res.status(200).json(cipher);
   } catch (e) {
@@ -87,7 +89,7 @@ export const addNewClient = async (req, res, next) => {
   try {
     const ifaceParams = getIfaceParams(iface);
     if (!ifaceParams.success) { return res.status(400).json(ifaceParams); }
-    const { cidr: serverCIDR, pubkey: serverPubKey, endpoint: serverIP, port: serverWGPort } = getIfaceParams(iface).data;
+    const { cidr: serverCIDR, pubkey: serverPubKey, port: serverWGPort } = ifaceParams.data;
     const busyIPs = getInterfacePeersIPs(iface);
 
     if (isExistAndNotNull(requestedIP) && busyIPs.includes(requestedIP)) {
@@ -117,7 +119,7 @@ export const addNewClient = async (req, res, next) => {
         PresharedKey: newClientData.presharedKey,
         PublicKey: serverPubKey,
         AllowedIPs: '0.0.0.0/0',
-        Endpoint: `${serverIP}:${serverWGPort}`,
+        Endpoint: `${getCurrentEndpoint()}:${serverWGPort}`,
         PersistentKeepalive: 25
       }
     });

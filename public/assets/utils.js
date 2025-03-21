@@ -5,46 +5,6 @@ const defaultUpdateInterval = 3000;
 const ipRegex = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
 const validateIPWithSubnet = (input) => ipRegex.test(input);
 
-const HideToast = () => {
-	var checkContainer = document.getElementsByClassName('toast-container')[0];
-	var toastsMessages = checkContainer.getElementsByClassName('toast-message');
-	if (toastsMessages.length > 1) {
-		checkContainer.removeChild(toastsMessages[toastsMessages.length - 1]);
-		setTimeout(HideToast, 3000);
-	} else {
-		document.body.removeChild(checkContainer);
-	}
-}
-
-const Toast = (messageToShow) => {
-	var container;
-	var toastsContainer = document.getElementsByClassName('toast-container');
-	var messageDiv = document.createElement('div');
-	messageDiv.classList.add('toast-message');
-	messageDiv.textContent = messageToShow ? messageToShow : 'Message...';
-
-	if (toastsContainer.length === 0) {
-		container = document.createElement('div');
-		container.classList.add('toast-container');
-		container.style.position = 'fixed';
-		container.style.top = '90px';
-		container.style.right = '50%';
-	  container.style.maxWidth = '300px';
-		container.style.zIndex = '100000';
-		container.style.background = '#139ecc';
-		container.style.color = '#ffffff';
-		container.style.padding = '10px 20px';
-		container.style.border = '1px solid rgba(255, 255, 255, 0.5)';
-    container.style.borderRadius = '5px';
-		container.style.wordBreak = 'break-word';
-		document.body.append(container);
-		setTimeout(HideToast, 2500);
-	} else {
-		container = toastsContainer[0];
-	}
-	container.append(messageDiv);
-}
-
 function makeRequest(makeRequestArguments) {
   var requestContentType = (typeof(makeRequestArguments.contentType) !== 'undefined') ? makeRequestArguments.contentType : 'application/json';
   var httpRequest = null;

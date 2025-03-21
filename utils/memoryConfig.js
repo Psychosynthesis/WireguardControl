@@ -87,9 +87,9 @@ export const loadServerConfig = async () => {
         const serverIP = configAdress.shift(); // Убираем CIDR
         const serverCIDR = (configAdress.length > 1) ? configAdress[1] : '24'; // Размер подсети
         configInMemory.interfaces[confFile] = { // В .data/interfaces.json данные хранятся в этом же формате
-          ip: serverIP,
+          ip: serverIP, // Внутренний адрес сервера внутри VPN из конфига currentInterface (каждый конфиг это файл .conf)
           cidr: serverCIDR,
-          port: currentInterface.ListenPort,
+          port: currentInterface.ListenPort, // Порт который слушает интерфейс
           pubkey,
           peers: interfacePeers
         }
@@ -134,9 +134,7 @@ export const loadServerConfig = async () => {
 
   configInMemory.wgIsWorking = wgStatus.success;
 
-  console.log(COLORS.Cyan, ' ');
-  console.log(COLORS.Cyan, 'Config loaded in memory: ', configInMemory);
-  console.log(COLORS.Reset, ' ');
+  console.log('\n', COLORS.Cyan, 'Config loaded in memory: ', configInMemory, '\n', COLORS.Reset);
 
   global.wgControlServerSettings = { ...configInMemory }
 }
@@ -168,6 +166,11 @@ export const getIfaceParams = (iface) => {
   }
 
   return { success: true, data: { ...global.wgControlServerSettings.interfaces[iface] } }
+}
+
+export const getCurrentEndpoint = () => {
+  // Получение текущего внешнего IP сервера на котором запущены
+  return global.wgControlServerSettings.endpoint;
 }
 
 export const setWGStatus = (status) => {

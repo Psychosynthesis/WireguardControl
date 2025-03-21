@@ -32,7 +32,7 @@
           <div><fieldset id="ifaces-list"><legend>Выбор интерфейса</legend></fieldset></div>
           <div>
             Введите ключ для расшифровки данных:
-            <input id="passkey-input" placeholder="Pass key" type="text" onkeyup="getStatus()" />
+            <input id="passkey-input" placeholder="Pass key" type="text" onkeyup="savePasskey()" />
           </div>
         </div>
       </div>
@@ -42,6 +42,16 @@
 // React и Vue - для слабаков
 const currentIface = () => document.querySelector('#ifaces-list input[type="radio"]:checked')?.value;
 const getPass = () => unpack(document.querySelector('#passkey-input')?.value);
+
+function savePasskey() {
+  const inputVal = document.querySelector('#passkey-input')?.value;
+  if (inputVal === '') {
+    localStorage.removeItem('ps');
+  } else {
+    localStorage.setItem('ps', String(inputVal));
+  }
+  getStatus();
+}
 
 function getFreeIP() {
   makeRequest({
@@ -268,6 +278,10 @@ function generateQR() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const passInput = document.querySelector('#passkey-input');
+  const savedKey = localStorage.getItem('ps');
+  if (passInput && isExistAndNotNull(savedKey) && savedKey !== '') { passInput.value = savedKey; }
+
   // Получаем список доступных интерфейсов прежде чем запрашивать статус
   makeRequest({
     url: '/api/config/interfaces',
