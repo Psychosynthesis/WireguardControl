@@ -18,7 +18,7 @@ import {
   readJSON,
   saveJSON,
   formatConfigToString,
-  formatObjectToConfigSection
+  formatObjectToConfigSection,
 } from '../utils/index.js';
 
 // Получить конфиг конкретного интерфейса (api/config?iface=wg)
@@ -36,50 +36,49 @@ export const getInterfaceConfig = async (req, res, next) => {
     const cipher = await encryptMsg(currentConfig);
     res.status(200).json(cipher);
   } catch (e) {
-    console.error('getConfig service error: ', e)
+    console.error('getConfig service error: ', e);
     res.status(520).json({ success: false, errors: 'Can`t get Wireguard config' });
     next(e);
   }
-}
+};
 
 // Получаем список доступных интерфейсов
 export const getInterfaces = async (req, res, next) => {
   try {
     const activeInterfacesList = getActiveInterfaceses();
     const defaultIface = getDefaultInterface();
-    const interfacesListForSelect = activeInterfacesList.map(
-      file => ({ checked: file === defaultIface, value: file })
-    );
+    const interfacesListForSelect = activeInterfacesList.map(file => ({ checked: file === defaultIface, value: file }));
     res.status(200).json({
       success: true,
-      data: interfacesListForSelect
+      data: interfacesListForSelect,
     });
   } catch (e) {
-    console.error('getInterfaces service error: ', e)
+    console.error('getInterfaces service error: ', e);
     res.status(520).json({ success: false, errors: 'Can`t get Wireguard Interfaces' });
     next(e);
   }
-}
+};
 
 // Получаем первый свободный IP для интерфейса
 export const getFirstFreeIP = async (req, res, next) => {
   const iface = req.query.iface;
   try {
     const ifaceParams = getIfaceParams(iface);
-    if (!ifaceParams.success) { return res.status(422).json(ifaceParams); }
+    if (!ifaceParams.success) {
+      return res.status(422).json(ifaceParams);
+    }
     const busyIPs = getInterfacePeersIPs(iface);
     const { cidr: serverCIDR } = ifaceParams.data;
     res.status(200).json({
       success: true,
       data: getFirstAvailableIP(busyIPs, serverCIDR),
     });
-
   } catch (e) {
-    console.error('getFirstFreeIP service error: ', e)
+    console.error('getFirstFreeIP service error: ', e);
     res.status(520).json({ success: false, errors: 'Can`t get new free IP' });
     next(e);
   }
-}
+};
 
 export const addNewClient = async (req, res, next) => {
   const requestedIP = req.body?.ip;
@@ -88,7 +87,9 @@ export const addNewClient = async (req, res, next) => {
 
   try {
     const ifaceParams = getIfaceParams(iface);
-    if (!ifaceParams.success) { return res.status(400).json(ifaceParams); }
+    if (!ifaceParams.success) {
+      return res.status(400).json(ifaceParams);
+    }
     const { cidr: serverCIDR, pubkey: serverPubKey, port: serverWGPort } = ifaceParams.data;
     const busyIPs = getInterfacePeersIPs(iface);
 
@@ -100,12 +101,13 @@ export const addNewClient = async (req, res, next) => {
     const newIP = requestedIP || getFirstAvailableIP(busyIPs, serverCIDR);
 
     await appendDataToConfig(
-      '/etc/wireguard/'+iface+'.conf',
-      formatObjectToConfigSection('Peer', { PublicKey: newClientData.pubKey, PresharedKey: newClientData.presharedKey, AllowedIPs: newIP }),
+      '/etc/wireguard/' + iface + '.conf',
+      formatObjectToConfigSection('Peer', { PublicKey: newClientData.pubKey, PresharedKey: newClientData.presharedKey, AllowedIPs: newIP })
     );
 
     let parsedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
-    parsedPeers[newClientData.pubKey] = { // Сохраняем клиента в наших данных
+    parsedPeers[newClientData.pubKey] = {
+      // Сохраняем клиента в наших данных
       name: newName ?? '',
       active: true,
       ip: newIP,
@@ -120,8 +122,8 @@ export const addNewClient = async (req, res, next) => {
         PublicKey: serverPubKey,
         AllowedIPs: '0.0.0.0/0',
         Endpoint: `${getCurrentEndpoint()}:${serverWGPort}`,
-        PersistentKeepalive: 25
-      }
+        PersistentKeepalive: 25,
+      },
     });
 
     res.setHeader('Content-Type', 'text/plain;charset=utf-8');
@@ -130,8 +132,8 @@ export const addNewClient = async (req, res, next) => {
     res.end();
     next('route');
   } catch (e) {
-    console.error('addNewClient service error: ', e)
+    console.error('addNewClient service error: ', e);
     res.status(520).json({ success: false, errors: 'Can`t add new client' });
-    next(e)
+    next(e);
   }
-}
+};

@@ -2,8 +2,8 @@ import crypto from 'crypto';
 
 import { getFrontendConfig } from './index.js';
 
-const pack = (buffer) => Buffer.from(buffer).toString('base64'); // Из буфера в base64
-const unpack = (packed) => Buffer.from(packed, 'base64'); // Из base64 в буфер
+const pack = buffer => Buffer.from(buffer).toString('base64'); // Из буфера в base64
+const unpack = packed => Buffer.from(packed, 'base64'); // Из base64 в буфер
 const generateKey = () => crypto.randomBytes(16); // 128-битный ключ
 
 // Функция шифрования
@@ -21,18 +21,18 @@ const decrypt = (encryptedData, key, iv) => {
   return decrypted.toString('utf8'); // Возвращает строку
 };
 
-export const encryptMsg = async (msg) => {
+export const encryptMsg = async msg => {
   const iv = generateKey();
-  const stringToCrypt = typeof(msg) === 'string' ? msg : JSON.stringify(msg);
+  const stringToCrypt = typeof msg === 'string' ? msg : JSON.stringify(msg);
   const { frontendPasskey } = getFrontendConfig();
   const encryptedData = await encrypt(stringToCrypt, unpack(frontendPasskey), iv);
   return {
     data: pack(encryptedData), // Данные в base64
-    v: pack(iv)
+    v: pack(iv),
   };
-}
+};
 
-export const decryptMsg = (msg) => {
+export const decryptMsg = msg => {
   const { data, v } = msg;
   const { frontendPasskey } = getFrontendConfig();
   return decrypt(unpack(data), unpack(frontendPasskey), unpack(v));

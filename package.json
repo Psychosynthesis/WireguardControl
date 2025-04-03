@@ -16,10 +16,23 @@
     "vanicom": "^1.1.1"
   },
   "devDependencies": {
-    "nodemon": "^2.0.15"
+    "nodemon": "^2.0.15",
+    "prettier": "3.5.3"
   },
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon server.js",
-    "start": "cross-env NODE_ENV=production node server.js"
+    "start": "cross-env NODE_ENV=production node server.js",
+    "style": "prettier --write '{middlewares,routes,services,utils}/**/*.js'"
+  },
+  "prettier": {
+    "trailingComma": "es5",
+    "tabWidth": 2,
+    "semi": true,
+    "singleQuote": true,
+    "printWidth": 140,
+    "quoteProps": "consistent",
+    "bracketSpacing": true,
+    "bracketSameLine": true,
+    "arrowParens": "avoid"
   }
 }

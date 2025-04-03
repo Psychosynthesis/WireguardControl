@@ -10,4 +10,4 @@ export const verifyClient = async (req, res, next) => {
   }
 
   next();
-}
+};

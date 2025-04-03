@@ -8,4 +8,4 @@ const router = Router({ mergeParams: true });
 router.get('/status', getWGStatus);
 router.get('/reboot', rebootWG);
 
-export default router
+export default router;
