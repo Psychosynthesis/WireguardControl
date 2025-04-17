@@ -1,10 +1,15 @@
 import path from 'path';
-import { executeSingleCommand, getStatusFromBash, getAllConfigs, setWGStatus, encryptMsg, ifaceCorrect } from '../utils/index.js';
+import Crypt from '@gratio/crypt';
+
+import { executeSingleCommand, getStatusFromBash, getAllConfigs, setWGStatus, ifaceCorrect } from '../utils/index.js';
+
+const { encryptMsg } = Crypt.serverCrypt;
 
 export const getWGStatus = async (req, res, next) => {
   try {
     const parsedStatus = await getStatusFromBash();
-    const cipher = await encryptMsg(parsedStatus);
+    const { frontendPasskey } = getFrontendConfig();
+    const cipher = encryptMsg({ message: parsedStatus, pass: frontendPasskey });
     res.status(200).json(cipher);
   } catch (e) {
     console.error('getWGStatus service error: ', e);

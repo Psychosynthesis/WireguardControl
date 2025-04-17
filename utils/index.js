@@ -1,4 +1,3 @@
-export * from './cypher.js';
 export * from './exec.js';
 export * from './ip.js';
 export * from './tools.js';

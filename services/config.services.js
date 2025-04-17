@@ -1,11 +1,12 @@
 import path from 'path';
 import { writeFileSync } from 'fs';
+import Crypt from '@gratio/crypt';
 import { Readable } from 'stream';
 import { isExistAndNotNull } from 'vanicom';
 
 import {
   appendDataToConfig,
-  encryptMsg,
+  getFrontendConfig,
   ifaceCorrect,
   getActiveInterfaceses,
   getDefaultInterface,
@@ -21,6 +22,8 @@ import {
   formatObjectToConfigSection,
 } from '../utils/index.js';
 
+const { encryptMsg } = Crypt.serverCrypt;
+
 // Получить конфиг конкретного интерфейса (api/config?iface=wg)
 // Проверяются только загруженные в память конфиги! Для проверки сохранённых написать другой метод.
 export const getInterfaceConfig = async (req, res, next) => {
@@ -33,7 +36,8 @@ export const getInterfaceConfig = async (req, res, next) => {
     // Парсим конфиг
     let currentConfig = await parseInterfaceConfig(iface);
     currentConfig['interface']['External IP'] = getCurrentEndpoint();
-    const cipher = await encryptMsg(currentConfig);
+    const { frontendPasskey } = getFrontendConfig();
+    const cipher = encryptMsg({ message: currentConfig, pass: frontendPasskey });
     res.status(200).json(cipher);
   } catch (e) {
     console.error('getConfig service error: ', e);
