@@ -43,7 +43,7 @@ function makeRequest(makeRequestArguments) {
       if (responseStatus < 200 || responseStatus >= 400) {
 				// Все штатные (через PHP) ответы сервера, даже с ошибкой, имеют код 200
 				// Пробуем распарсить текст ошибки
-				Toast('Server return error: ' + responseStatus);
+        toast('Server return error: ' + responseStatus);
 				try {
 					JSON.parse(httpRequest.responseText);
 				} catch (parseErr) {
