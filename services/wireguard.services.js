@@ -1,7 +1,7 @@
 import path from 'path';
 import Crypt from '@gratio/crypt';
 
-import { executeSingleCommand, getStatusFromBash, getAllConfigs, setWGStatus, ifaceCorrect } from '../utils/index.js';
+import { getFrontendConfig, executeSingleCommand, getStatusFromBash, getAllConfigs, setWGStatus, ifaceCorrect } from '../utils/index.js';
 
 const { encryptMsg } = Crypt.serverCrypt;
 
