@@ -1,0 +1,11 @@
+import { Router, json } from 'express';
+import { checkInterface } from '../middlewares/index.js';
+import { addNewClient, getInterfaceConfig, getInterfaces, getFirstFreeIP, removeClient } from '../services/index.js';
+const router = Router({ mergeParams: true });
+const jsonParser = json({ limit: '10mb' });
+router.get('/', checkInterface, getInterfaceConfig);
+router.get('/interfaces', getInterfaces);
+router.get('/freeIP', checkInterface, getFirstFreeIP);
+router.post('/client/add', jsonParser, checkInterface, addNewClient);
+router.post('/client/remove', jsonParser, checkInterface, removeClient);
+export default router;

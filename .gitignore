@@ -1,13 +1,8 @@
 /node_modules
 
 # /public
-dist
-
-# SSL Sert
-/public/.well-known/
 
 package-lock.json
-/storage/*.key
 .env
 npm-debug.log
 yarn-error.log
