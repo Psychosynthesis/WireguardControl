@@ -2,7 +2,7 @@
 A simple web interface for WireGuard VPN that allows using existing configurations or setting up new ones.
 
 ### Features and Characteristics
-- Adding clients via the web interface
+- Adding and removing clients via the web interface
 - Tracking status in the interface
 - Reloading WireGuard via the web interface
 - Working with multiple `.conf` files (interfaces)
@@ -36,11 +36,11 @@ Clone the repository into a convenient folder (here, for example, it's `/var/wg-
 git clone https://github.com/Psychosynthesis/WireguardControl.git /var/wg-control
 ```
 
-Navigate to the created folder and install the dependencies:
+Navigate to the created folder and install the dependencies, then build:
 ```bash
 cd /var/wg-control
-
 npm i
+npm run build
 ```
 
 ### Launch
@@ -74,7 +74,7 @@ Next, add the server script to autostart. There are several ways to do this, but
 
 ```bash
 npm install pm2 -g
-cd /var/wg-control && pm2 start ecosystem.json --watch --ignore-watch="node_modules"
+cd /var/wg-control && pm2 start demon.json --watch --ignore-watch="node_modules"
 pm2 startup
 pm2 save
 ```

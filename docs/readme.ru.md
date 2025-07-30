@@ -2,7 +2,7 @@
 Простой web-интерфейс для VPN-wireguard с возможностью как использовать уже созданные конфиги, так и настраивать свои.
 
 ### Возможности и особенности
- - Добавление клиентов через web-интерфейс
+ - Добавление и удаление клиентов через web-интерфейс
  - Отслеживание статуса в интерфейсе
  - Перезагрузка Wireguard через web-интерфейс
  - Работа с несколькими `.conf`-файлами (интерфейсами)
@@ -39,8 +39,8 @@ git clone https://github.com/Psychosynthesis/WireguardControl.git /var/wg-contro
 Переходим в созданную папку и устанавливаем зависимости:
 ```bash
 cd /var/wg-control
-
 npm i
+npm run build
 ```
 
 ### Запуск
@@ -71,7 +71,7 @@ forge.util.encode64(forge.random.getBytes(16));
 
 ```bash
 npm install pm2 -g
-cd /var/wg-control && pm2 start ecosystem.json --watch --ignore-watch="node_modules"
+cd /var/wg-control && pm2 start demon.json --watch --ignore-watch="node_modules"
 pm2 startup
 pm2 save
 ```
