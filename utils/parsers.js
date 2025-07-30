@@ -70,12 +70,13 @@ export const parseInterfaceConfig = iface => {
   if (!iface || typeof iface !== 'string') {
     return new Promise.reject(new Error('Interface must be a string!'));
   }
-
-  const interfaceExist = fs.existsSync(`/etc/wireguard/${iface}.conf`);
+  const interfacePath = `/etc/wireguard/${iface}.conf`;
+  const interfaceExist = fs.existsSync(interfacePath);
 
   if (!interfaceExist) {
     return new Promise.reject(new Error('Incorrect interface!'));
   }
+  console.log('Try to parse interface ' + interfacePath);
 
   return new Promise((resolve, reject) => {
     try {

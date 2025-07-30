@@ -1,6 +1,7 @@
 /node_modules
 
 # /public
+dist
 
 # SSL Sert
 /public/.well-known/
@@ -15,7 +16,7 @@ yarn-error.log
 .sync.json
 .remote-sync.json
 
-# Content pass and other sensitive data!
+# May content pass and other sensitive data!
 .editorconfig
 .data
 

@@ -39,7 +39,7 @@
     </div>
 </body>
 <script type="text/javascript">
-// React и Vue - для слабаков
+// React и Vue — для лохов
 const currentIface = () => document.querySelector('#ifaces-list input[type="radio"]:checked')?.value;
 const getPass = () => unpack(document.querySelector('#passkey-input')?.value);
 
@@ -92,7 +92,6 @@ function getStatus() {
         var statusBlock = document.getElementById('status-block');
         statusBlock.innerHTML = '';
         const divElem = document.createElement('div');
-        divElem.className = "text";
         divElem.innerHTML =
           `<b>Interface name: </b> ${statsData.interface.name} <br />
           <b>Public key: </b>${statsData.interface['public key']} <br />
@@ -199,81 +198,30 @@ function tryReboot(){
   });
 }
 
-function generateQR() {
-  // Stoled from cryptostorm.is/wgconfqr
-  var privkey = document.getElementById("privkey").value; // Example: L+V9o0fN345VKNqsX7spBzD/9oSvxM/C7ZCZX1jLO3Q=
-  var ip = document.getElementById("ip").value; // '10.10.2.1'
-  var psk = document.getElementById("psk").value; // L+V9o0fN345VKNqsX7spBzD/9oSvxM/C7ZCZX1jLO3Q=
-  var dns = document.getElementById("dns");
-  var ks = document.getElementById("ks");
-  var node = document.getElementById("nodes");
-  var server = node.value.replace(/([a-z]+\.cstorm\.is):(.*)/, '$1');
-  var pubkey = node.value.replace(/([a-z]+\.cstorm\.is):(.*)/, '$2');
-  document.getElementById("status").style = "display:none";
-  if (!privkey || privkey.length === 0) {
-    doErr("Error: You didn't enter a private key");
-    return;
-  }
-  if (privkey.length != 44) {
-    doErr("Error: " + privkey + " is " + privkey.length + " characters long.<br>Private keys should be 44 characters long.");
-    return;
-  }
-  if (!/^[a-zA-Z0-9\+\/\=]{44}/.test(privkey)) {
-    doErr("Error: The private key " + privkey + " contains invalid characters.<br>Valid characters are: a-z, A-Z, 0-9, +, /, and =");
-    return;
-  }
-  if (!ip || ip.length === 0) {
-    doErr("Error: You didn't enter an IP");
-    return;
-  }
-  ip = ip.replace(/\/32$/, '');
-  ip = ip.replace(/ /g, '');
-  if (!/^10\.10\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ip)) {
-    doErr("Error: The IP " + ip + " is invalid.<br>The IP should be in the format of 10.10.x.x where x is 0-255");
-    return;
-  }
-  if (!psk || psk.length === 0) {
-    doErr("Error: You didn't enter a PSK");
-    return;
-  }
-  if (psk.length != 44) {
-    doErr("Error: " + psk + " is " + psk.length + " characters long.<br>The PSK should be 44 characters long.");
-    return;
-  }
-  if (!/^[a-zA-Z0-9\+\/\=]{44}/.test(psk)) {
-    doErr("Error: The PSK " + psk + " contains invalid characters.<br>Valid characters are: a-z, A-Z, 0-9, +, /, and =");
+function deleteClient(pubKey) {
+  if (!confirm('Вы уверены, что хотите удалить клиента? Это действие необратимо.')) {
     return;
   }
 
-  if (dns.checked) {
-    var dns = "10.31.33.7";
-  } else {
-    var dns = "10.31.33.8";
-  }
-  if (ks.checked) {
-    var al = "0.0.0.0/0";
-  } else {
-    var al = "0.0.0.0/1, 128.0.0.0/1";
-  }
-
-  var conf = `[Interface]\n
-  PrivateKey = ${privkey}\n
-  Address = ${ip}\n
-  DNS = ${dns}\n \n
-  [Peer]\n
-  Presharedkey = ${psk}\n
-  PublicKey = ${pubkey}\n
-  Endpoint = ${server}:443\n
-  AllowedIPs = ${al} \n
-  PersistentKeepalive = 25`
-  document.getElementById("bottomthing").innerHTML = "";
-  var qrcode = new QRCode(document.getElementById("bottomthing"), {
-    text: conf,
-    width: 478,
-    height: 478,
-    colorDark : "#000000",
-    colorLight : "#ffffff",
-    correctLevel : QRCode.CorrectLevel.H
+  makeRequest({
+    url: '/api/config/client/remove',
+    type: 'POST',
+    callback: function(response) {
+      var res = responseHandler(response);
+      if (!res.success) {
+        renderError(res.data);
+      } else {
+        toast({ message: "Remove client success. Don't forget reboot Wireguard!", duration: 5000 });
+        // Обновляем текущий вид
+        var statusTab = document.getElementById('status-tab');
+        if (statusTab.style.display !== 'none') {
+          getStatus();
+        } else {
+          getConfig();
+        }
+      }
+    },
+    data: JSON.stringify({ iface: currentIface(), pubKey: pubKey })
   });
 }
 

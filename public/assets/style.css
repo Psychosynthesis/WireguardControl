@@ -41,6 +41,7 @@ input:focus-visible { outline-width: 0; border: none !important; outline: none; 
 .peerblock { background: rgba(100, 110, 130, 0.2); border-radius: 8px; padding: 10px; margin-bottom: 20px; }
 .peerblock h4 { margin: 0px 0px 5px 0px; }
 .peerblock .pubkeyblock { font-size: 85%; color: #ccc; margin-bottom: 10px; }
+.peerblock .delete-button { padding: 2px 5px; font-size: 80%; border: 1px solid red; color: red; float: right; }
 
 @media (max-width: 840px) {
     body { padding: 30px; }

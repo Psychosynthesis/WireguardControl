@@ -42,9 +42,13 @@ ListenPort = [PORT]
 PrivateKey = SERVER_SECRET_KEY
 
 PostUp = iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-PostUp = ip rule add from `ip addr show eth0 | grep "inet" | grep -v "inet6" | head -n 1 | awk '/inet/ {print $2}' | awk -F/ '{print $1}'` table main
+PostUp = ip rule add from `ip addr show eth0 | grep "inet" | head -n 1 | awk '/inet/ {print $2}' | awk -F/ '{print $1}'` table main
+# Более лаконичный и красивый вариант этого правила:
+# PostUp = ip rule add from $(ip -4 addr show dev eth0 | awk '/inet / {print $2}' | cut -d/ -f1) table main
+
 PostDown = iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
-PostDown = ip rule del from `ip addr show eth0 | grep "inet" | grep -v "inet6" | head -n 1 | awk '/inet/ {print $2}' | awk -F/ '{print $1}'` table main
+PostDown = ip rule del from `ip addr show eth0 | grep "inet" | head -n 1 | awk '/inet/ {print $2}' | awk -F/ '{print $1}'` table main
+# PostDown = ip rule del from $(ip -4 addr show dev eth0 | awk '/inet / {print $2}' | cut -d/ -f1) table main
 
 [Peer] # Out node
 PublicKey = OUT_NODE_PUBLIC_KEY

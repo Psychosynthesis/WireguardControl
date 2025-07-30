@@ -1,8 +1,8 @@
 {
   "apps" : [{
-    "name"   : "Wireguard-Control",
-    "script" : "./server.js",
-    "watch": ["services", "routes", "utils"],
+    "name"   : "wg-control",
+    "script" : "./dist/server.js",
+    "watch": ["dist"],
     "ignore-watch": ["node_modules"],
     "env": {
        "NODE_ENV": "development"

@@ -32,7 +32,7 @@ const loadFrontendConfig = () => {
 };
 
 export const loadServerConfig = async () => {
-  let frontendSettings = loadFrontendConfig(); // Вывалится с ошибкой, если никакого конфига не будет найдено
+  let frontendSettings = await loadFrontendConfig(); // Вывалится с ошибкой, если никакого конфига не будет найдено
   let savedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
   const savedInterfaces = readJSON(path.resolve(process.cwd(), './.data/interfaces.json'), true);
 

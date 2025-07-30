@@ -1,7 +1,7 @@
 var timerId;
 var freeIP = '';
 
-const defaultUpdateInterval = 3000;
+const defaultUpdateInterval = 5000;
 const ipRegex = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
 const validateIPWithSubnet = (input) => ipRegex.test(input);
 
@@ -85,13 +85,17 @@ function responseHandler(response, passkey) {
 		}
     try {
       convertedResponse = JSON.parse(response);
-      if (passkey && convertedResponse.hasOwnProperty('v')) {
-        const { data, v: vector } = convertedResponse;
-        // Распаковка данных
-        const decrypted = JSON.parse(decrypt(unpack(data), passkey, unpack(vector)));
-        convertedResponse.data = decrypted;
-      } else if (!convertedResponse.hasOwnProperty('data')) {
-        console.error('Incorrect encrypted response: ', convertedResponse);
+      if (passkey) {
+        if (convertedResponse.hasOwnProperty('v') && convertedResponse.hasOwnProperty('data')) {
+          const { data, v: vector } = convertedResponse;
+          // Распаковка данных
+          const decrypted = JSON.parse(decrypt(unpack(data), passkey, unpack(vector)));
+          convertedResponse.data = decrypted;
+        } else {
+          console.error('Incorrect encrypted response: ', convertedResponse);
+        }
+      } else if (!convertedResponse.hasOwnProperty('success')) {
+        console.error('Response seems incorrect: ', convertedResponse);
       }
     } catch (parseErr) {
       console.log('Error in responseHandler on parsing response: ', parseErr);
@@ -136,7 +140,12 @@ function objectToHTML(json, level = 0) {
 function renderPeerBlocks(peersData = []) {
   let html = '<h3>Peers</h3>';
   peersData.map((peer) => {
-    html += `<div class="peerblock"><h4>${peer.name || ' '} <i>[edit]</i></h4><div class="pubkeyblock">${peer['public key'] || peer.PublicKey}</div>`;
+    const pubKey = peer['public key'] || peer.PublicKey;
+    const jsSafePubKey = pubKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"'); // Экранирование для JS строки
+
+    html += `<div class="peerblock"><h4>${peer.name || '[peer.name not setted]'} `;
+    html += `<button class="delete-button" onclick="deleteClient('${jsSafePubKey}')">Удалить</button></h4>`;
+    html += `<div class="pubkeyblock">${pubKey}</div>`;
     html += '<div>';
     if (peer.PresharedKey) { html += `<b>Preshared Key: </b>${peer.PresharedKey} <br />` };
     if (peer.endpoint) { html += `<b>Peer public IP: </b>${peer.endpoint} <br />` };

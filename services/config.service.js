@@ -1,7 +1,7 @@
 import path from 'path';
-import { writeFileSync } from 'fs';
-import Crypt from '@gratio/crypt';
+import { writeFileSync, readFileSync } from 'fs';
 import { Readable } from 'stream';
+import Crypt from '@gratio/crypt';
 import { isExistAndNotNull } from 'vanicom';
 
 import {
@@ -20,6 +20,8 @@ import {
   saveJSON,
   formatConfigToString,
   formatObjectToConfigSection,
+  transCyrilic,
+  removePeerFromConfig
 } from '../utils/index.js';
 
 const { encryptMsg } = Crypt.serverCrypt;
@@ -28,10 +30,6 @@ const { encryptMsg } = Crypt.serverCrypt;
 // Проверяются только загруженные в память конфиги! Для проверки сохранённых написать другой метод.
 export const getInterfaceConfig = async (req, res, next) => {
   const iface = req.query.iface;
-  if (!ifaceCorrect(iface)) {
-    return res.status(422).json({ success: false, errors: 'Incorrect interface!' });
-  }
-
   try {
     // Парсим конфиг
     let currentConfig = await parseInterfaceConfig(iface);
@@ -131,13 +129,45 @@ export const addNewClient = async (req, res, next) => {
     });
 
     res.setHeader('Content-Type', 'text/plain;charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${newName ? newName + '.conf' : 'Client.conf'}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${newName ? transCyrilic(newName) + '.conf' : 'Client.conf'}"`);
     res.send(formattedConfig);
     res.end();
     next('route');
   } catch (e) {
     console.error('addNewClient service error: ', e);
     res.status(520).json({ success: false, errors: 'Can`t add new client' });
+    next(e);
+  }
+};
+
+
+// Удаление клиента из конфига
+export const removeClient = async (req, res, next) => {
+  const iface = req.body?.iface;
+  const pubKey = req.body?.pubKey;
+
+  if (!pubKey || typeof pubKey !== 'string' || pubKey.trim().length !== 44) {
+    return res.status(422).json({ success: false, errors: 'Incorrect public key!' });
+  }
+
+  try {
+    const peerFound = removePeerFromConfig(iface, pubKey);
+    if (!peerFound) {
+      return res.status(404).json({ success: false, errors: 'Peer not found in config' });
+    }
+    // Удаление из файла peers.json
+    const peersPath = path.resolve(process.cwd(), './.data/peers.json');
+    let peersData = readJSON(peersPath, true);
+
+    if (peersData[pubKey]) {
+      delete peersData[pubKey];
+      saveJSON(peersPath, peersData);
+    }
+
+    res.status(200).json({ success: true });
+  } catch (e) {
+    console.error('removeClient service error: ', e);
+    res.status(520).json({ success: false, errors: 'Can`t remove client' });
     next(e);
   }
 };

@@ -1,10 +1,10 @@
-import fs from 'fs';
+import { appendFileSync, readdir, readFileSync, writeFileSync } from 'fs';
 
 // Дописываем в конец конфига
 export const appendDataToConfig = async (filePath, data) => {
   const stringToAppend = '\n' + data + '\n';
   try {
-    await fs.appendFileSync(filePath, stringToAppend, 'utf-8');
+    await appendFileSync(filePath, stringToAppend, 'utf-8');
   } catch (error) {
     console.error(`Error on appendDataToConfig to file: "${filePath}":`, error);
     throw error;
@@ -53,7 +53,7 @@ export const formatConfigToString = configObject => {
 // Получаем список интерфейсов (все файлы .conf)
 export const getAllConfigs = async () => {
   const allConfFiles = await new Promise((resolve, reject) => {
-    fs.readdir('/etc/wireguard', (err, files) => {
+    readdir('/etc/wireguard', (err, files) => {
       if (err) {
         reject(err);
       } else {
@@ -75,3 +75,27 @@ export const getAllConfigs = async () => {
 
   return { success: true, data: allConfFiles };
 };
+
+export const removePeerFromConfig = (iface, pubKey) => {
+  const configPath = '/etc/wireguard/' + iface + '.conf';
+
+  // Чтение и обработка конфигурационного файла
+  let configData = readFileSync(configPath, 'utf8');
+  const sections = configData.split(/(?=\[)/g); // Разделение на секции
+
+  let peerFound = false;
+  const newSections = sections.filter(section => {
+    if (section.startsWith('[Peer]')) {
+      const peerPublicKeyMatch = section.match(/PublicKey\s*=\s*([^\s]+)/);
+      if (peerPublicKeyMatch && peerPublicKeyMatch[1] === pubKey) {
+        peerFound = true;
+        return false; // Удаляем секцию
+      }
+    }
+    return true;
+  });
+
+  peerFound && writeFileSync(configPath, newSections.join(''), 'utf8');
+
+  return peerFound;
+}
