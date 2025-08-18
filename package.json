@@ -7,7 +7,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@gratio/crypt": "^1.0.x",
+    "@gratio/crypt": "^1.0.7",
     "boma": "^1.0.1",
     "cookie-parser": "^1.4.5",
     "cors": "^2.8.5",

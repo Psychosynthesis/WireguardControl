@@ -38,7 +38,7 @@ export const getInterfaceConfig = async (req, res, next) => {
     currentConfig['interface']['External IP'] = getCurrentEndpoint();
     const { frontendPasskey } = getFrontendConfig();
     const cipher = encryptMsg({ message: currentConfig, pass: frontendPasskey });
-    res.status(200).json(cipher);
+    res.status(200).json({ success: true, data: cipher });
   } catch (e) {
     console.error('getConfig service error: ', e);
     res.status(520).json({ success: false, errors: 'Can`t get Wireguard config' });

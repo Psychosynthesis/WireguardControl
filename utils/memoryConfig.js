@@ -36,6 +36,7 @@ const loadFrontendConfig = () => {
 
 export const loadServerConfig = async () => {
   let frontendSettings = await loadFrontendConfig(); // Вывалится с ошибкой, если никакого конфига не будет найдено
+  let savedPeers = readJSON({ filePath: PEERS_PATH, createIfNotFound: {}, parseJSON: true });
   const savedInterfaces = readJSON({ filePath: path.resolve(process.cwd(), './.data/interfaces.json'), createIfNotFound: {}, parseJSON: true });
 
   const interfacesCount = Object.keys(savedInterfaces).length;

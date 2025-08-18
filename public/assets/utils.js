@@ -85,17 +85,20 @@ function responseHandler(response, passkey) {
 		}
     try {
       convertedResponse = JSON.parse(response);
-      if (passkey) {
-        if (convertedResponse.hasOwnProperty('v') && convertedResponse.hasOwnProperty('data')) {
-          const { data, v: vector } = convertedResponse;
+      if (!convertedResponse.hasOwnProperty('success')) {
+        console.error('Response seems incorrect: ', convertedResponse);
+      } else if (convertedResponse.success && passkey) {
+        const cypherData = convertedResponse.data;
+        if (cypherData.hasOwnProperty('v') && cypherData.hasOwnProperty('data')) {
+          const { data, v: vector } = cypherData;
           // Распаковка данных
           const decrypted = JSON.parse(decrypt(unpack(data), passkey, unpack(vector)));
-          convertedResponse.data = decrypted;
+          result.data = decrypted;
+          result.success = true;
+          return result;
         } else {
           console.error('Incorrect encrypted response: ', convertedResponse);
         }
-      } else if (!convertedResponse.hasOwnProperty('success')) {
-        console.error('Response seems incorrect: ', convertedResponse);
       }
     } catch (parseErr) {
       console.log('Error in responseHandler on parsing response: ', parseErr);
@@ -108,8 +111,8 @@ function responseHandler(response, passkey) {
     console.log("Unknown type of response: ", response);
   }
 
-  result.success = (typeof(convertedResponse) !== "string") && convertedResponse && !convertedResponse.errors;
-  result.data = !result.success ? convertedResponse.errors : convertedResponse.data;
+  result.success = (typeof(convertedResponse) !== "string") && convertedResponse && !convertedResponse.error;
+  result.data = !result.success ? convertedResponse.error : convertedResponse.data; // Ошибку передаём там же в дата, чтоб упростить логику
   return result;
 }
 
