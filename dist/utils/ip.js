@@ -1,7 +1,8 @@
 import path from 'path';
+import { readJSON } from 'boma';
 import { isExistAndNotNull } from 'vanicom';
-import { getIfaceParams, readJSON } from './index.js';
-export const isValidSubnetMask = mask => {
+import { getIfaceParams } from './index.js';
+export const isValidSubnetMask = (mask) => {
     const regex = /^((255|254|252|248|240|224|192|128|0)\.){3}(255|254|252|248|240|224|192|128|0)$/;
     if (!regex.test(mask)) {
         return false;
@@ -18,50 +19,57 @@ export const isValidSubnetMask = mask => {
     }
     return true;
 };
-export const getInterfacePeersIPs = iface => {
+export const getInterfacePeersIPs = (iface) => {
     const ifaceParams = getIfaceParams(iface);
     if (!ifaceParams.success) {
-        return res.status(400).json(ifaceParams);
+        throw new Error(`Ошибка получения параметров интерфейса: ${ifaceParams.error}`);
     }
     const { peers: peersData, ip: serverIP } = ifaceParams.data;
-    let parsedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
-    let allBusyIPs = [];
-    peersData.map(peerKey => {
-        if (isExistAndNotNull(parsedPeers[peerKey])) {
-            const ipsList = parsedPeers[peerKey].ip.split(',');
-            let checkedIP = [];
-            if (ipsList.length === 1) {
-                checkedIP.push(ipsList[0].trim().split('/').shift());
-            }
-            else {
-                ipsList.forEach(rawIP => {
-                    let tempIP = rawIP.trim().split('/').shift();
-                    if (allBusyIPs.includes(tempIP)) {
-                        console.error('Interface ', iface, ' has a possible conflict of IP: ', tempIP);
-                    }
-                    else {
-                        checkedIP.push(tempIP);
-                    }
-                });
-            }
-            allBusyIPs = allBusyIPs.concat(checkedIP);
-        }
+    const parsedPeers = readJSON({
+        filePath: path.resolve(process.cwd(), './.data/peers.json'),
+        parseJSON: true,
+        createIfNotFound: {},
     });
-    allBusyIPs.push(serverIP);
-    return allBusyIPs.filter(busyIP => busyIP !== '0.0.0.0');
+    const busyIPs = new Set();
+    for (const peerKey of peersData) {
+        const peer = parsedPeers[peerKey];
+        if (!isExistAndNotNull(peer))
+            continue;
+        const ipsList = peer.ip.split(',').map(ip => ip.trim().split('/')[0]);
+        for (const rawIP of ipsList) {
+            const cleanedIP = rawIP.trim();
+            if (cleanedIP === '0.0.0.0')
+                continue;
+            if (busyIPs.has(cleanedIP)) {
+                console.error(`Interface ${iface} has a possible conflict of IP: ${cleanedIP}`);
+            }
+            busyIPs.add(cleanedIP);
+        }
+    }
+    busyIPs.add(serverIP);
+    return Array.from(busyIPs);
 };
 export const getFirstAvailableIP = (occupiedIPs, cidr) => {
-    const occupied = occupiedIPs
+    const occupiedNumbers = occupiedIPs
         .map(ip => {
         const parts = ip.split('.').map(Number);
+        if (parts.length !== 4 || parts.some(isNaN))
+            return null;
         return (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3];
     })
+        .filter((ip) => ip !== null)
         .sort((a, b) => a - b);
-    const networkIP = occupied[0] & (~0 << (32 - cidr));
+    const networkIP = occupiedNumbers[0] & (~0 << (32 - cidr));
     const broadcastIP = networkIP | (~0 >>> cidr);
-    for (let i = networkIP + 1; i < broadcastIP; i++) {
-        if (!occupied.includes(i)) {
-            return [(i >>> 24) & 0xff, (i >>> 16) & 0xff, (i >>> 8) & 0xff, i & 0xff].join('.');
+    const occupiedSet = new Set(occupiedNumbers);
+    for (let ipNum = networkIP + 1; ipNum < broadcastIP; ipNum++) {
+        if (!occupiedSet.has(ipNum)) {
+            return [
+                (ipNum >>> 24) & 0xff,
+                (ipNum >>> 16) & 0xff,
+                (ipNum >>> 8) & 0xff,
+                ipNum & 0xff,
+            ].join('.');
         }
     }
     return null;

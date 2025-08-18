@@ -1,6 +1,6 @@
 import fs from 'fs';
-import { getNameFromSavedData, readJSON, normalizeLineBreaks } from './index.js';
-export const parseStatus = rawStatus => {
+import { getNameFromSavedData, normalizeLineBreaks } from './index.js';
+export const parseStatus = (rawStatus) => {
     let parsedStatus = { interface: {}, peers: [] };
     const sections = rawStatus.split(/(?:\s*(interface|peer)\s*:)/gi).filter(line => line);
     for (let i = 0; i < sections.length; i += 2) {
@@ -8,7 +8,7 @@ export const parseStatus = rawStatus => {
             continue;
         const sectionName = sections[i].trim().toLowerCase();
         const sectionContent = normalizeLineBreaks(sections[i + 1].trim()).split(/\n/);
-        let parsedSection = {};
+        let parsedSection = { name: '' };
         sectionContent.forEach((item, i) => {
             if (i === 0) {
                 parsedSection.name = item;
@@ -28,8 +28,8 @@ export const parseStatus = rawStatus => {
     }
     return parsedStatus;
 };
-export const splitBySections = content => {
-    const result = { peers: [] };
+export const splitBySections = (content) => {
+    const result = { interface: {}, peers: [] };
     if (typeof content !== 'string' || !content.length) {
         return result;
     }
@@ -46,7 +46,7 @@ export const splitBySections = content => {
     }
     return result;
 };
-const parseLine = line => {
+const parseLine = (line) => {
     const trimmedLine = line.trim();
     if (!trimmedLine.startsWith('#') && !trimmedLine.startsWith(';')) {
         const match = trimmedLine.match(/^([^=]+)=(.*)$/);
@@ -57,45 +57,41 @@ const parseLine = line => {
         }
     }
 };
-export const parseInterfaceConfig = iface => {
+export const parseInterfaceConfig = (iface) => {
     if (!iface || typeof iface !== 'string') {
-        return new Promise.reject(new Error('Interface must be a string!'));
+        throw new Error('Interface must be a string!');
     }
     const interfacePath = `/etc/wireguard/${iface}.conf`;
-    const interfaceExist = fs.existsSync(interfacePath);
-    if (!interfaceExist) {
-        return new Promise.reject(new Error('Incorrect interface!'));
+    if (!fs.existsSync(interfacePath)) {
+        throw new Error('Incorrect interface!');
     }
     console.log('Try to parse interface ' + interfacePath);
-    return new Promise((resolve, reject) => {
-        try {
-            fs.readFile(`/etc/wireguard/${iface}.conf`, 'utf8', (err, data) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                const splittedData = splitBySections(data);
-                const configObject = { peers: Array(splittedData.peers.length) };
-                for (let section in splittedData) {
-                    if (section.toLowerCase() === 'peers') {
-                        splittedData.peers.forEach((item, i) => {
-                            item.split('\n').forEach(line => {
-                                configObject.peers[i] = { ...configObject.peers[i], ...parseLine(line) };
-                            });
-                            configObject.peers[i].name = getNameFromSavedData(configObject.peers[i].PublicKey);
+    try {
+        const data = fs.readFileSync(interfacePath, 'utf8');
+        const splittedData = splitBySections(data);
+        const configObject = { interface: {}, peers: [] };
+        for (const section in splittedData) {
+            const sectionName = section.toLowerCase();
+            switch (sectionName) {
+                case 'peers':
+                    configObject.peers = splittedData[section].map((peerData) => {
+                        const peer = {};
+                        peerData.split('\n').forEach(line => {
+                            Object.assign(peer, parseLine(line));
                         });
-                    }
-                    else {
-                        splittedData[section].split('\n').forEach(line => {
-                            configObject[section] = { ...configObject[section], ...parseLine(line) };
-                        });
-                    }
-                }
-                resolve(configObject);
-            });
+                        peer.name = getNameFromSavedData(peer.PublicKey);
+                        return peer;
+                    });
+                    break;
+                case 'interface':
+                    splittedData[section].split('\n').forEach((line) => {
+                        configObject[section] = { ...configObject[section], ...parseLine(line) };
+                    });
+            }
         }
-        catch (error) {
-            reject(new Error(`Failed to parse config file: ${error.message}`));
-        }
-    });
+        return configObject;
+    }
+    catch (error) {
+        throw new Error(`Failed to parse config file: ${error.message}`);
+    }
 };

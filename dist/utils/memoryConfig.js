@@ -1,7 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { readJSON, saveJSON } from 'boma';
 import { isExistAndNotNull } from 'vanicom';
-import { getStatusFromBash, getAllConfigs, readJSON, saveJSON, COLORS, genPubKey, getServerIP, parseInterfaceConfig } from './index.js';
+import { getStatusFromBash, getAllConfigs, COLORS, genPubKey, getServerIP, parseInterfaceConfig } from './index.js';
+const PEERS_PATH = path.resolve(process.cwd(), './.data/peers.json');
 const loadFrontendConfig = () => {
     const configPath = path.resolve(process.cwd(), './config.json');
     const exampleConfigPath = path.resolve(process.cwd(), 'config.example.json');
@@ -22,13 +24,13 @@ const loadFrontendConfig = () => {
             throw new Error('Config files not found');
         }
     }
-    const config = readJSON(configPath, true);
+    const config = readJSON({ filePath: configPath, createIfNotFound: {}, parseJSON: true });
     return config;
 };
 export const loadServerConfig = async () => {
     let frontendSettings = await loadFrontendConfig();
-    let savedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
-    const savedInterfaces = readJSON(path.resolve(process.cwd(), './.data/interfaces.json'), true);
+    let savedPeers = readJSON({ filePath: PEERS_PATH, createIfNotFound: {}, parseJSON: true });
+    const savedInterfaces = readJSON({ filePath: path.resolve(process.cwd(), './.data/interfaces.json'), createIfNotFound: {}, parseJSON: true });
     const interfacesCount = Object.keys(savedInterfaces).length;
     const allConfiguredInterfaces = await getAllConfigs();
     const externalIP = await getServerIP();
@@ -87,7 +89,7 @@ export const loadServerConfig = async () => {
             if (!allActivePeers.includes(peerKey))
                 savedPeers[peerKey].active = false;
         });
-        saveJSON(path.resolve(process.cwd(), './.data/peers.json'), savedPeers);
+        saveJSON(PEERS_PATH, savedPeers, true);
     }
     const correctParsedIfaces = Object.keys(configInMemory.interfaces);
     if (interfacesCount === 0 && !wgStatus.success) {
@@ -102,7 +104,7 @@ export const loadServerConfig = async () => {
         !correctParsedIfaces.includes(defaultInterface)) {
         const newDefaultInt = configInMemory.interfaces[correctParsedIfaces[0]];
         frontendSettings.defaultInterface = newDefaultInt;
-        saveJSON(path.resolve(process.cwd(), './config.json'), frontendSettings);
+        saveJSON(path.resolve(process.cwd(), './config.json'), frontendSettings, true);
         console.log('defaultInterface from ./config.json missing or incorrect, set new: ', newDefaultInt);
     }
     configInMemory.wgIsWorking = wgStatus.success;

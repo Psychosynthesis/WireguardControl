@@ -1,10 +1,12 @@
 import path from 'path';
 import { writeFileSync, readFileSync } from 'fs';
 import { Readable } from 'stream';
+import { readJSON, saveJSON } from 'boma';
 import Crypt from '@gratio/crypt';
 import { isExistAndNotNull } from 'vanicom';
-import { appendDataToConfig, getFrontendConfig, ifaceCorrect, getActiveInterfaceses, getDefaultInterface, getInterfacePeersIPs, getIfaceParams, getCurrentEndpoint, getFirstAvailableIP, genNewClientKeys, parseInterfaceConfig, readJSON, saveJSON, formatConfigToString, formatObjectToConfigSection, transCyrilic, removePeerFromConfig } from '../utils/index.js';
+import { appendDataToConfig, getFrontendConfig, ifaceCorrect, getActiveInterfaceses, getDefaultInterface, getInterfacePeersIPs, getIfaceParams, getCurrentEndpoint, getFirstAvailableIP, genNewClientKeys, parseInterfaceConfig, formatConfigToString, formatObjectToConfigSection, transCyrilic, removePeerFromConfig } from '../utils/index.js';
 const { encryptMsg } = Crypt.serverCrypt;
+const PEERS_PATH = path.resolve(process.cwd(), './.data/peers.json');
 export const getInterfaceConfig = async (req, res, next) => {
     const iface = req.query.iface;
     try {
@@ -12,7 +14,7 @@ export const getInterfaceConfig = async (req, res, next) => {
         currentConfig['interface']['External IP'] = getCurrentEndpoint();
         const { frontendPasskey } = getFrontendConfig();
         const cipher = encryptMsg({ message: currentConfig, pass: frontendPasskey });
-        res.status(200).json(cipher);
+        res.status(200).json({ success: true, data: cipher });
     }
     catch (e) {
         console.error('getConfig service error: ', e);
@@ -73,16 +75,16 @@ export const addNewClient = async (req, res, next) => {
         const newClientData = await genNewClientKeys();
         const newIP = requestedIP || getFirstAvailableIP(busyIPs, serverCIDR);
         await appendDataToConfig('/etc/wireguard/' + iface + '.conf', formatObjectToConfigSection('Peer', { PublicKey: newClientData.pubKey, PresharedKey: newClientData.presharedKey, AllowedIPs: newIP }));
-        let parsedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
+        let parsedPeers = readJSON({ filePath: PEERS_PATH, parseJSON: true, createIfNotFound: {} });
         parsedPeers[newClientData.pubKey] = {
             name: newName ?? '',
             active: true,
             ip: newIP,
             PresharedKey: newClientData.presharedKey,
         };
-        saveJSON(path.resolve(process.cwd(), './.data/peers.json'), parsedPeers);
+        saveJSON(PEERS_PATH, parsedPeers, true);
         const formattedConfig = formatConfigToString({
-            Interface: { PrivateKey: newClientData.randomKey, Address: newIP, DNS: '1.1.1.1' },
+            Interface: { PrivateKey: newClientData.randomKey, Address: newIP, DNS: '10.8.1.1' },
             Peer: {
                 PresharedKey: newClientData.presharedKey,
                 PublicKey: serverPubKey,
@@ -114,11 +116,10 @@ export const removeClient = async (req, res, next) => {
         if (!peerFound) {
             return res.status(404).json({ success: false, errors: 'Peer not found in config' });
         }
-        const peersPath = path.resolve(process.cwd(), './.data/peers.json');
-        let peersData = readJSON(peersPath, true);
+        let peersData = readJSON({ filePath: PEERS_PATH, parseJSON: true, createIfNotFound: {} });
         if (peersData[pubKey]) {
             delete peersData[pubKey];
-            saveJSON(peersPath, peersData);
+            saveJSON(PEERS_PATH, peersData, true);
         }
         res.status(200).json({ success: true });
     }
