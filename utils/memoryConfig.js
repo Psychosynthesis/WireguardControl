@@ -1,8 +1,11 @@
 import fs from 'fs';
 import path from 'path';
+import { readJSON, saveJSON } from 'boma';
 import { isExistAndNotNull } from 'vanicom';
 
-import { getStatusFromBash, getAllConfigs, readJSON, saveJSON, COLORS, genPubKey, getServerIP, parseInterfaceConfig } from './index.js';
+import { getStatusFromBash, getAllConfigs, COLORS, genPubKey, getServerIP, parseInterfaceConfig } from './index.js';
+
+const PEERS_PATH = path.resolve(process.cwd(), './.data/peers.json');
 
 const loadFrontendConfig = () => {
   // Хелпер для загрузки конфига сервера веб-морды
@@ -27,14 +30,13 @@ const loadFrontendConfig = () => {
     }
   }
 
-  const config = readJSON(configPath, true);
+  const config = readJSON({ filePath: configPath, createIfNotFound: {}, parseJSON: true });
   return config;
 };
 
 export const loadServerConfig = async () => {
   let frontendSettings = await loadFrontendConfig(); // Вывалится с ошибкой, если никакого конфига не будет найдено
-  let savedPeers = readJSON(path.resolve(process.cwd(), './.data/peers.json'), true);
-  const savedInterfaces = readJSON(path.resolve(process.cwd(), './.data/interfaces.json'), true);
+  const savedInterfaces = readJSON({ filePath: path.resolve(process.cwd(), './.data/interfaces.json'), createIfNotFound: {}, parseJSON: true });
 
   const interfacesCount = Object.keys(savedInterfaces).length;
   const allConfiguredInterfaces = await getAllConfigs();
@@ -110,7 +112,7 @@ export const loadServerConfig = async () => {
       if (!allActivePeers.includes(peerKey)) savedPeers[peerKey].active = false;
     });
 
-    saveJSON(path.resolve(process.cwd(), './.data/peers.json'), savedPeers); // Сохраняем данные о пирах
+    saveJSON(PEERS_PATH, savedPeers, true); // Сохраняем данные о пирах
   }
 
   const correctParsedIfaces = Object.keys(configInMemory.interfaces);
@@ -131,7 +133,7 @@ export const loadServerConfig = async () => {
     const newDefaultInt = configInMemory.interfaces[correctParsedIfaces[0]];
     frontendSettings.defaultInterface = newDefaultInt;
 
-    saveJSON(path.resolve(process.cwd(), './config.json'), frontendSettings);
+    saveJSON(path.resolve(process.cwd(), './config.json'), frontendSettings, true);
     console.log('defaultInterface from ./config.json missing or incorrect, set new: ', newDefaultInt);
   }
 

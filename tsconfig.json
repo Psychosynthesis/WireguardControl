@@ -26,6 +26,6 @@
       "@utils/*": ["./utils/*"]
     }
   },
-  "include": ["services/**/*", "middlewares/**/*", "utils/**/*", "server.ts"],
+  "include": ["services/**/*", "middlewares/**/*", "utils/**/*", "server.ts", "types.d.ts"],
   "exclude": ["node_modules", "dist", ".data"]
 }
